@@ -517,6 +517,15 @@ const GHOSTS = [
 const DEATHS = ["a fall from the landing", "the winter fever", "the well behind the house",
   "the fire that took the east wing", "a stranger at the door", "grief, after the others left",
   "the sickness that emptied the village", "cold water and a still night"];
+// broader "what happened to you" — why the spirit lingers, distinct from the cause of death
+const FATES = ["They left me here, and no one ever came back.",
+  "I waited by the door for someone who never returned.",
+  "They sealed the room and told the village I had gone.",
+  "My name was forgotten before the ground was cold.",
+  "I reached out, and every hand pulled away.",
+  "The others fled the house. I was not allowed to.",
+  "Something came in the night, and it never left.",
+  "I am still trying to finish what I started."];
 const EV_LABEL = { emf5: "EMF Level 5", freezing: "Freezing Temps", fingerprints: "Fingerprints", ghostwriting: "Ghost Writing" };
 
 // spirit given-names, revealed in the debrief once the case is closed
@@ -1416,7 +1425,8 @@ function askSpirit(kind) {
     if (!state.investigating || state.dead || !state.bookPlaced) return;
     if (!willAnswer) { showToast("The pages stay blank. It won't answer that."); micStatus("Nothing. The book is still."); return; }
     let text = "";
-    if (kind === "died" || kind === "happened") text = "It was " + state.ghostDeath + ".";
+    if (kind === "died") text = "It was " + state.ghostDeath + ".";
+    else if (kind === "happened") text = state.ghostFate;
     else if (kind === "age") text = "I am " + state.ghostAge + " years old.";
     else if (kind === "friendly") text = state.ghostFriendly ? "I mean you no harm." : "You should not have come.";
     else text = "\u2026";
@@ -1993,6 +2003,7 @@ function pickHaunt() {
     + " " + GHOST_LAST[(Math.random() * GHOST_LAST.length) | 0];
   state.ghostAge = 7 + ((Math.random() * 80) | 0);
   state.ghostDeath = DEATHS[(Math.random() * DEATHS.length) | 0];
+  state.ghostFate = FATES[(Math.random() * FATES.length) | 0];
   const t = state.ghostType.name;
   state.ghostFriendly = (t === "Demon" || t === "Banshee") ? false : Math.random() < 0.55;
   state.ghostWrites = state.ghostType.ev.includes("ghostwriting");   // only certain spirits write in the book
