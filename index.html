@@ -1,0 +1,2019 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<title>Phantom Manor</title>
+<style>
+  :root{
+    --bg:#05060a; --panel:#0b0f16; --line:#1b2530;
+    --cyan:#4ea0e0; --ice:#7fd0ff; --amber:#e0a94e;
+    --red:#e0574e; --hunt:#b0201a; --green:#41e07a; --dim:#7d8a97;
+    --mono:"SFMono-Regular",Menlo,Consolas,"Liberation Mono",monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;background:var(--bg);overflow:hidden;font-family:var(--mono);
+    color:#cfd6dd;cursor:crosshair;touch-action:none;-webkit-user-select:none;user-select:none;
+    -webkit-touch-callout:none}
+  #app{position:fixed;inset:0}
+  canvas{display:block}
+
+  #grain{position:fixed;inset:0;pointer-events:none;z-index:5;opacity:.06;mix-blend-mode:screen;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    animation:grain .4s steps(2) infinite}
+  @keyframes grain{0%{transform:translate(0,0)}50%{transform:translate(-4px,3px)}100%{transform:translate(3px,-2px)}}
+  #scan{position:fixed;inset:0;pointer-events:none;z-index:5;opacity:.22;
+    background:repeating-linear-gradient(0deg,transparent 0 2px,rgba(0,0,0,.35) 2px 3px)}
+  #vig{position:fixed;inset:0;pointer-events:none;z-index:4;box-shadow:inset 0 0 220px 60px rgba(0,0,0,.9)}
+  #cross{position:fixed;left:50%;top:50%;width:5px;height:5px;transform:translate(-50%,-50%);
+    border-radius:50%;background:rgba(200,220,235,.5);z-index:6;pointer-events:none}
+
+  /* HUD */
+  #hud{position:fixed;inset:0;z-index:6;pointer-events:none;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
+  .meter{position:absolute;left:22px;width:180px}
+  #m-sanity{top:20px}
+  #m-stamina{top:60px}
+  .meter .lab{display:flex;justify-content:space-between;color:var(--dim);font-size:10px;margin-bottom:5px}
+  .track{height:7px;background:#0d1219;border:1px solid var(--line);position:relative;overflow:hidden}
+  .fill{position:absolute;inset:0 auto 0 0;background:var(--cyan);transition:width .12s linear}
+  #stamina-bar{background:var(--amber)}
+
+  #readout{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);
+    display:flex;gap:20px;align-items:center;padding:11px 18px;
+    background:linear-gradient(180deg,#0c1119,#080b10);border:1px solid var(--line);border-radius:4px;
+    box-shadow:0 0 0 1px #000,0 8px 30px rgba(0,0,0,.6)}
+  .gauge{display:flex;flex-direction:column;gap:6px;align-items:center}
+  .gauge .cap{font-size:9px;color:var(--dim)}
+  #emf-bars{display:flex;gap:3px}
+  .emf-cell{width:11px;height:20px;background:#0d1219;border:1px solid var(--line)}
+  .emf-cell.on{background:var(--cyan);box-shadow:0 0 6px var(--cyan)}
+  .emf-cell.on.l4{background:var(--amber);box-shadow:0 0 6px var(--amber)}
+  .emf-cell.on.l5{background:var(--red);box-shadow:0 0 8px var(--red)}
+  #temp-val{font-size:20px;color:#cfd6dd;letter-spacing:0}
+  .divider{width:1px;height:32px;background:var(--line)}
+
+  #hunt-banner{position:absolute;left:50%;top:64px;transform:translateX(-50%);
+    color:var(--red);font-weight:700;font-size:18px;letter-spacing:.35em;opacity:0;
+    text-shadow:0 0 18px var(--hunt);transition:opacity .15s}
+  #toast{position:absolute;left:50%;top:120px;transform:translateX(-50%);
+    color:var(--ice);font-size:12px;letter-spacing:.1em;opacity:0;transition:opacity .3s;
+    text-shadow:0 0 10px rgba(127,208,255,.5);text-align:center;max-width:80vw}
+  #clock{position:absolute;left:22px;bottom:20px;color:var(--dim);font-size:10px}
+
+  /* dynamic vignettes */
+  #hunt-vignette{position:fixed;inset:0;pointer-events:none;z-index:4;opacity:0;
+    box-shadow:inset 0 0 260px 80px rgba(150,10,10,.85);transition:opacity .2s}
+  #hide-vignette{position:fixed;inset:0;pointer-events:none;z-index:7;opacity:0;transition:opacity .25s;
+    background:repeating-linear-gradient(0deg,#000 0 26px,rgba(10,12,16,.86) 26px 34px)}
+
+  /* echo-style controls */
+  #stick{position:fixed;z-index:8;width:118px;height:118px;border-radius:50%;
+    border:1px solid rgba(127,208,255,.22);background:rgba(8,16,22,.5);
+    pointer-events:none;opacity:0;transition:opacity .12s;transform:translate(-50%,-50%)}
+  #stickKnob{position:absolute;left:50%;top:50%;width:50px;height:50px;border-radius:50%;
+    margin:-25px 0 0 -25px;background:rgba(127,208,255,.32);box-shadow:0 0 16px rgba(127,208,255,.4)}
+
+  #interact{position:fixed;left:50%;bottom:104px;transform:translateX(-50%);
+    z-index:8;pointer-events:none;opacity:0;transition:opacity .15s;
+    padding:13px 24px;border:1px solid rgba(127,208,255,.5);border-radius:30px;
+    background:rgba(6,14,20,.85);color:var(--ice);font-size:13px;letter-spacing:.1em;
+    text-shadow:0 0 12px rgba(127,208,255,.4);white-space:nowrap;text-transform:uppercase}
+  #interact.show{opacity:1;pointer-events:auto}
+
+  #btns{position:fixed;right:18px;top:50%;transform:translateY(-50%);z-index:8;
+    display:flex;flex-direction:column;gap:12px;pointer-events:none}
+  .rbtn{pointer-events:auto;width:64px;height:64px;border-radius:50%;background:rgba(10,16,22,.72);
+    border:1px solid var(--line);color:var(--ice);font-family:var(--mono);font-size:11px;
+    letter-spacing:.05em;cursor:pointer;text-transform:uppercase}
+  .rbtn:active{background:var(--cyan);color:#04070c}
+  .rbtn.on{border-color:var(--cyan);box-shadow:0 0 12px rgba(78,160,224,.3)}
+  #b-pause{pointer-events:auto;position:fixed;right:18px;top:16px;z-index:8;width:46px;height:46px;
+    border-radius:8px;background:rgba(10,16,22,.72);border:1px solid var(--line);color:var(--ice);
+    font-family:var(--mono);font-size:15px;cursor:pointer}
+
+  /* overlays */
+  .overlay{position:fixed;inset:0;z-index:20;display:none;flex-direction:column;
+    align-items:center;justify-content:center;text-align:center;
+    background:radial-gradient(circle at 50% 40%,rgba(10,14,20,.86),rgba(2,3,5,.97));padding:30px}
+  .overlay.visible{display:flex}
+  .eyebrow{color:var(--cyan);font-size:11px;letter-spacing:.5em;text-transform:uppercase;margin-bottom:14px}
+  .title{font-size:clamp(32px,8vw,64px);font-weight:800;letter-spacing:.16em;text-transform:uppercase;
+    color:#e9eef3;text-shadow:0 0 30px rgba(78,160,224,.3);line-height:1}
+  .sub{color:var(--dim);max-width:520px;margin:16px 0 8px;font-size:13px;line-height:1.7}
+  .controls-drop{width:min(360px,86vw);margin:16px 0 20px}
+  .ctrl-btn{width:100%;pointer-events:auto;cursor:pointer;background:#0b0f16;border:1px solid var(--line);
+    color:#cfd6dd;font-family:var(--mono,monospace);font-size:12px;letter-spacing:.18em;text-transform:uppercase;
+    padding:13px 16px;border-radius:4px;display:flex;justify-content:center;align-items:center;gap:10px;transition:.15s}
+  .ctrl-btn:hover{border-color:var(--cyan);color:#eaf6ff}
+  .ctrl-btn.open{border-color:var(--cyan);border-radius:4px 4px 0 0}
+  .ctrl-caret{color:var(--dim);transition:transform .2s}
+  .ctrl-btn.open .ctrl-caret{transform:rotate(180deg)}
+  .ctrl-panel{max-height:0;overflow:hidden;transition:max-height .28s ease}
+  .ctrl-panel.open{max-height:250px}
+  .ctrl-scroll{max-height:250px;overflow-y:auto;-webkit-overflow-scrolling:touch;
+    background:#080b11;border:1px solid var(--cyan);border-top:none;border-radius:0 0 4px 4px;padding:4px 4px 6px}
+  .ctrl-head{font-size:9px;letter-spacing:.28em;text-transform:uppercase;color:var(--amber);
+    padding:9px 12px 4px;position:sticky;top:0;background:#080b11}
+  .ctrl-row{display:flex;justify-content:space-between;gap:14px;padding:8px 12px;font-size:12px;
+    border-bottom:1px solid rgba(255,255,255,.04)}
+  .ctrl-row b{color:var(--ice);font-weight:600;letter-spacing:.05em;white-space:nowrap}
+  .ctrl-row span{color:var(--dim);text-align:right}
+  .btn{pointer-events:auto;cursor:pointer;background:transparent;color:#e9eef3;border:1px solid var(--cyan);
+    padding:14px 34px;font-family:var(--mono);font-size:13px;letter-spacing:.28em;text-transform:uppercase;transition:.15s}
+  .btn:hover{background:var(--cyan);color:#04070c;box-shadow:0 0 26px rgba(78,160,224,.5)}
+  .btn.danger{border-color:var(--red)} .btn.danger:hover{background:var(--red)}
+  #death .title{color:var(--red);text-shadow:0 0 40px var(--hunt)}
+  #verdict{font-size:24px;font-weight:800;letter-spacing:.2em;margin:6px 0}
+  #truth,#your-guess{color:var(--dim);font-size:12px;margin-top:6px}
+  .hint{margin-top:14px;color:#3a4652;font-size:10px;letter-spacing:.1em;text-transform:uppercase}
+
+  /* journal (scrollable) */
+  #journal{position:fixed;inset:0;z-index:25;display:none;align-items:center;justify-content:center;padding:20px;
+    background:radial-gradient(circle at 50% 30%,rgba(9,13,19,.94),rgba(2,3,5,.98))}
+  .book{width:min(680px,94vw);max-height:88vh;display:flex;flex-direction:column;
+    border:1px solid var(--line);background:var(--panel);padding:20px 22px}
+  .book h2{font-size:13px;letter-spacing:.3em;color:var(--cyan);text-transform:uppercase;margin:0 0 12px}
+  .jscroll{overflow-y:auto;-webkit-overflow-scrolling:touch;padding-right:6px;flex:1;min-height:0}
+  .jscroll h2{margin-top:20px}
+  #evidence-list{display:flex;flex-direction:column;gap:6px}
+  .ev-row{display:flex;align-items:center;gap:12px;padding:10px 12px;background:#0a0e14;border:1px solid var(--line);
+    font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
+  .ev-row.found{color:var(--green);border-color:var(--green)}
+  .ev-row .chk{color:var(--green)}
+  #ghost-list{display:flex;flex-direction:column;gap:5px}
+  .ghost-row{pointer-events:auto;cursor:pointer;display:flex;justify-content:space-between;align-items:center;
+    padding:11px 14px;background:#0a0e14;border:1px solid var(--line);transition:.12s}
+  .ghost-row:hover{border-color:var(--cyan)}
+  .ghost-row .gname{font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:#dfe6ec}
+  .ghost-row .gev{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.05em}
+  .ghost-row.ruled-out{opacity:.32;text-decoration:line-through}
+  .ghost-row.chosen{border-color:var(--amber);box-shadow:0 0 14px rgba(224,169,78,.25)}
+  .ghost-row.chosen .gname{color:var(--amber)}
+  #guess-status{margin-top:16px;color:var(--dim);font-size:11px;letter-spacing:.06em;text-align:center}
+  .jclose{margin-top:14px;align-self:center;pointer-events:auto;cursor:pointer;font-size:11px;letter-spacing:.2em;
+    color:var(--cyan);border:1px solid var(--line);border-radius:22px;padding:9px 24px;text-transform:uppercase}
+
+  /* shop modal */
+  #shop{position:fixed;inset:0;z-index:25;display:none;align-items:center;justify-content:center;padding:22px;
+    background:rgba(2,3,5,.9)}
+  .shop-box{width:min(460px,92vw);max-height:86vh;display:flex;flex-direction:column;
+    border:1px solid var(--line);background:var(--panel);padding:22px}
+  .shop-box h2{font-size:14px;letter-spacing:.3em;color:var(--amber);text-transform:uppercase;text-align:center}
+  .shop-sub{margin:8px 0 14px;font-size:11px;color:var(--dim);text-align:center;font-style:italic}
+  .shop-scroll{overflow-y:auto;-webkit-overflow-scrolling:touch;flex:1;min-height:0;display:flex;flex-direction:column;gap:7px}
+  .shop-item{display:flex;justify-content:space-between;align-items:center;padding:11px 13px;
+    background:#0a0e14;border:1px solid var(--line);font-size:12px;letter-spacing:.05em}
+  .shop-item .si-name{color:#dfe6ec;text-transform:uppercase;letter-spacing:.1em}
+  .shop-item .si-tag{color:var(--dim);font-size:10px;border:1px solid var(--line);border-radius:12px;padding:2px 9px}
+  .si-buy{pointer-events:auto;cursor:pointer;background:transparent;border:1px solid var(--amber);color:var(--amber);
+    font-family:var(--mono,monospace);font-size:11px;letter-spacing:.1em;padding:5px 12px;border-radius:12px;transition:.15s}
+  .si-buy:hover{background:var(--amber);color:#100b04}
+  .si-buy.owned{border-color:var(--green);color:var(--green);pointer-events:none}
+  .shop-cash{margin-top:12px;text-align:center;font-size:11px;letter-spacing:.12em;color:var(--dim);text-transform:uppercase}
+  .shop-cash b{color:var(--amber)}
+
+  /* séance / speech panel */
+  #seance{position:fixed;inset:0;z-index:26;display:none;align-items:center;justify-content:center;padding:22px;
+    background:radial-gradient(circle at 50% 40%,rgba(10,14,20,.9),rgba(2,3,5,.97))}
+  #seance.show{display:flex}
+  .seance-box{width:min(440px,92vw);max-height:86vh;display:flex;flex-direction:column;
+    background:#080b11;border:1px solid var(--line);border-radius:6px;padding:20px}
+  .seance-box h2{font-size:14px;letter-spacing:.3em;color:var(--ice);text-transform:uppercase;text-align:center}
+  .seance-sub{margin:8px 0 14px;font-size:11px;color:var(--dim);text-align:center;line-height:1.5}
+  .mic-btn{pointer-events:auto;cursor:pointer;width:100%;background:#0b0f16;border:1px solid var(--cyan);
+    color:#eaf6ff;font-family:var(--mono,monospace);font-size:12px;letter-spacing:.18em;text-transform:uppercase;
+    padding:14px;border-radius:4px;transition:.15s}
+  .mic-btn.live{background:var(--red);border-color:var(--red);color:#fff;animation:micpulse 1s infinite}
+  .mic-btn.disabled{opacity:.5;border-color:var(--line);color:var(--dim)}
+  @keyframes micpulse{50%{box-shadow:0 0 18px rgba(224,87,78,.7)}}
+  .mic-status{min-height:15px;margin:8px 0;font-size:11px;letter-spacing:.06em;color:var(--amber);text-align:center}
+  .seance-scroll{overflow-y:auto;-webkit-overflow-scrolling:touch;flex:1;min-height:0;display:flex;flex-direction:column;gap:7px;margin-top:4px}
+  .phrase{pointer-events:auto;cursor:pointer;text-align:left;background:#0b0f16;border:1px solid var(--line);
+    color:#dfe6ec;font-family:var(--mono,monospace);font-size:12px;letter-spacing:.04em;padding:11px 13px;border-radius:4px;transition:.15s}
+  .phrase:hover{border-color:var(--cyan)}
+  .phrase small{display:block;color:var(--dim);font-size:10px;letter-spacing:.02em;margin-top:3px;text-transform:uppercase}
+
+  /* book reader */
+  #bookmodal{position:fixed;inset:0;z-index:27;display:none;align-items:center;justify-content:center;padding:22px;
+    background:rgba(2,3,5,.9)}
+  #bookmodal.show{display:flex}
+  .book-box{width:min(420px,92vw);background:#0c0e13;border:1px solid var(--line);border-radius:6px;padding:22px;text-align:center}
+  .book-box h2{font-size:13px;letter-spacing:.3em;color:var(--amber);text-transform:uppercase}
+  .book-page{margin:16px 0;min-height:70px;display:flex;align-items:center;justify-content:center;
+    background:#d9c9a5;color:#241708;font-family:Georgia,'Times New Roman',serif;font-size:20px;
+    padding:22px;border-radius:3px;line-height:1.4}
+  .book-row{display:flex;gap:12px;justify-content:center}
+
+  /* difficulty picker */
+  .difficulty{margin:4px 0 6px;display:flex;flex-direction:column;align-items:center;gap:9px}
+  .difflabel{font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--dim)}
+  .chips{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+  .chip{pointer-events:auto;cursor:pointer;background:#0b0f16;border:1px solid var(--line);
+    color:var(--dim);font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+    padding:8px 15px;border-radius:20px;transition:.14s}
+  .chip:hover{border-color:var(--cyan);color:#cfd6dd}
+  .chip.on{border-color:var(--amber);color:var(--amber);box-shadow:0 0 12px rgba(224,169,78,.22)}
+
+  /* profile strip (cash / level / exp) */
+  .profile-strip{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:16px 0 6px}
+  .pf{display:flex;flex-direction:column;gap:4px;align-items:flex-start;min-width:96px;
+    background:#0a0e14;border:1px solid var(--line);border-radius:4px;padding:9px 13px}
+  .pf-k{font-size:9px;letter-spacing:.24em;text-transform:uppercase;color:var(--dim)}
+  .pf-v{font-size:17px;letter-spacing:.04em;color:#e9eef3}
+  .pf-xp{min-width:150px}
+  .xp{width:100%;height:5px;background:#0d1219;border:1px solid var(--line);margin-top:3px;overflow:hidden}
+  .xp-fill{height:100%;width:0;background:var(--cyan);box-shadow:0 0 8px rgba(78,160,224,.5);transition:width .3s}
+
+  /* debrief name + reward chips */
+  .debrief-name{margin-top:12px;color:var(--ice);font-size:14px;letter-spacing:.06em;
+    text-shadow:0 0 12px rgba(127,208,255,.35)}
+  .reward{display:flex;gap:9px;justify-content:center;flex-wrap:wrap;margin-top:14px}
+  .rw{font-size:12px;letter-spacing:.12em;text-transform:uppercase;padding:7px 14px;border-radius:20px;border:1px solid var(--line)}
+  .rw-exp{color:var(--cyan);border-color:rgba(78,160,224,.5)}
+  .rw-cash{color:var(--amber);border-color:rgba(224,169,78,.5)}
+  .rw-level{color:var(--green);border-color:var(--green);box-shadow:0 0 14px rgba(65,224,122,.25)}
+
+  /* save / load */
+  .save-row{display:flex;gap:16px;justify-content:center;flex-wrap:wrap;margin:18px 0 0}
+  .btn.small{padding:11px 20px;font-size:11px;letter-spacing:.18em}
+
+  /* loading / boot screen */
+  .loadscreen{position:fixed;inset:0;z-index:60;display:none;flex-direction:column;align-items:center;
+    justify-content:center;gap:12px;background:#04050a;padding:30px;text-align:center}
+  .loadscreen.show{display:flex}
+  .load-eyebrow{font-size:11px;letter-spacing:.5em;text-transform:uppercase;color:var(--dim)}
+  .load-sub{font-size:10px;letter-spacing:.34em;text-transform:uppercase;color:var(--amber)}
+  .load-name{font-family:Georgia,'Times New Roman',serif;font-size:clamp(30px,8vw,58px);
+    color:var(--ice);letter-spacing:.03em;line-height:1.05;text-shadow:0 0 26px rgba(127,208,255,.35)}
+  .load-bar{width:min(320px,74vw);height:6px;background:#0d1219;border:1px solid var(--line);
+    margin-top:20px;overflow:hidden}
+  .load-fill{height:100%;width:0;background:linear-gradient(90deg,var(--cyan),var(--ice));
+    box-shadow:0 0 10px rgba(78,160,224,.6);transition:width .25s ease}
+  .load-status{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);min-height:14px}
+  .load-count{font-family:var(--mono,monospace);font-size:13px;letter-spacing:.1em;color:var(--cyan);min-height:16px}
+</style>
+</head>
+<body>
+  <div id="app"></div>
+  <div id="grain"></div>
+  <div id="scan"></div>
+  <div id="vig"></div>
+  <div id="hunt-vignette"></div>
+  <div id="hide-vignette"></div>
+  <div id="cross"></div>
+
+  <div id="hud">
+    <div class="meter" id="m-sanity">
+      <div class="lab"><span>Sanity</span><span id="sanity-val">100%</span></div>
+      <div class="track"><div class="fill" id="sanity-bar" style="width:100%"></div></div>
+    </div>
+    <div class="meter" id="m-stamina">
+      <div class="lab"><span>Stamina</span><span></span></div>
+      <div class="track"><div class="fill" id="stamina-bar" style="width:100%"></div></div>
+    </div>
+    <div id="hunt-banner">◆ HUNT ◆</div>
+    <div id="toast"></div>
+
+    <div id="readout">
+      <div class="gauge">
+        <div id="emf-bars"><i class="emf-cell"></i><i class="emf-cell"></i><i class="emf-cell"></i><i class="emf-cell"></i><i class="emf-cell"></i></div>
+        <div class="cap">EMF</div>
+      </div>
+      <div class="divider"></div>
+      <div class="gauge">
+        <div id="temp-val">12.0°C</div>
+        <div class="cap">Thermometer</div>
+      </div>
+    </div>
+    <div id="clock">CASE FILE · PHANTOM MANOR</div>
+  </div>
+
+  <!-- controls -->
+  <div id="stick"><div id="stickKnob"></div></div>
+  <div id="interact"></div>
+  <div id="btns">
+    <button class="rbtn" id="b-tool">LIGHT</button>
+    <button class="rbtn on" id="b-flash">TORCH</button>
+    <button class="rbtn" id="b-ask">ASK</button>
+    <button class="rbtn" id="b-journal">LOG</button>
+  </div>
+  <button id="b-pause">II</button>
+
+  <!-- SÉANCE (speech / phrase prompts) -->
+  <div id="seance">
+    <div class="seance-box">
+      <h2>Séance</h2>
+      <div class="seance-sub" id="seance-sub">Speak to the spirit, or tap a question. Book questions need the writing book placed nearby — replies are written by hand, so they take a few seconds, and a written reply logs Ghost Writing evidence.</div>
+      <button class="mic-btn" id="mic-btn">Hold to speak</button>
+      <div class="mic-status" id="mic-status"></div>
+      <div class="seance-scroll" id="seance-list"></div>
+      <div class="jclose" id="seance-close" style="margin-top:14px">Close</div>
+    </div>
+  </div>
+
+  <!-- BOOK reader -->
+  <div id="bookmodal">
+    <div class="book-box">
+      <h2>Ghost Writing Book</h2>
+      <div class="book-page" id="book-page">The pages are blank.</div>
+      <div class="book-row">
+        <button class="btn small" id="book-pickup">Pick up</button>
+        <button class="btn small" id="book-closebtn">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- LOADING -->
+  <div id="loading" class="loadscreen">
+    <div class="load-eyebrow">Phantom Manor</div>
+    <div class="load-sub">Tonight's haunt</div>
+    <div class="load-name" id="load-name">—</div>
+    <div class="load-bar"><div class="load-fill" id="load-fill"></div></div>
+    <div class="load-status" id="load-status">Initialising game state…</div>
+    <div class="load-count" id="load-count"></div>
+  </div>
+
+  <!-- START -->
+  <div id="start" class="overlay visible">
+    <div class="eyebrow">Paranormal Field Investigation</div>
+    <div class="title">Phantom<br/>Manor</div>
+    <div class="sub">You've arrived at the manor. Let yourself in through the front door, read the haunt's signature with your gear, log the evidence and name what's inside — then get back to the car and drive off.</div>
+    <div class="controls-drop">
+      <button class="ctrl-btn" id="controls-toggle" aria-expanded="false">Controls <span class="ctrl-caret">▾</span></button>
+      <div class="ctrl-panel" id="controls-panel">
+        <div class="ctrl-scroll">
+          <div class="ctrl-head">Movement</div>
+          <div class="ctrl-row"><b>Move</b><span>Left stick · WASD</span></div>
+          <div class="ctrl-row"><b>Look</b><span>Drag screen · Mouse</span></div>
+          <div class="ctrl-row"><b>Sprint</b><span>Push stick fully · Shift</span></div>
+          <div class="ctrl-head">Gear</div>
+          <div class="ctrl-row"><b>Switch tool</b><span>LIGHT button · 1–5</span></div>
+          <div class="ctrl-row"><b>Torch</b><span>TORCH button · F</span></div>
+          <div class="ctrl-row"><b>Interact / Act</b><span>Centre button · E</span></div>
+          <div class="ctrl-row"><b>Journal</b><span>LOG button · J</span></div>
+          <div class="ctrl-head">Séance</div>
+          <div class="ctrl-row"><b>Ask spirit</b><span>ASK button · K</span></div>
+          <div class="ctrl-row"><b>Writing book</b><span>Buy in Supplies · select · Act to place</span></div>
+          <div class="ctrl-head">Survival</div>
+          <div class="ctrl-row"><b>Hide</b><span>Act near a wardrobe or bed</span></div>
+          <div class="ctrl-row"><b>Leave</b><span>Act at the car outside</span></div>
+          <div class="ctrl-row"><b>Pause</b><span>II button · Esc</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="difficulty">
+      <div class="difflabel">Contract difficulty · higher pays more</div>
+      <div class="chips" id="diff-chips">
+        <button class="chip on" data-diff="amateur">Amateur</button>
+        <button class="chip" data-diff="intermediate">Intermediate</button>
+        <button class="chip" data-diff="professional">Professional</button>
+      </div>
+    </div>
+
+    <div class="profile-strip">
+      <div class="pf"><span class="pf-k">Cash</span><span class="pf-v" data-cash>$0</span></div>
+      <div class="pf"><span class="pf-k">Level</span><span class="pf-v" data-level>1</span></div>
+      <div class="pf pf-xp"><span class="pf-k">EXP</span><span class="pf-v" data-exp>0</span>
+        <div class="xp"><div class="xp-fill" data-xpbar></div></div></div>
+    </div>
+
+    <div class="save-row">
+      <button class="btn small" id="mm-save">Save progress</button>
+      <button class="btn small" id="mm-load">Load save</button>
+    </div>
+
+    <button class="btn" onclick="enterInvestigation()" style="margin-top:22px">Approach the Manor</button>
+    <div class="hint" id="start-hint">Headphones recommended · progress saves automatically</div>
+  </div>
+
+  <!-- PAUSE -->
+  <div id="pause" class="overlay">
+    <div class="eyebrow">Investigation Paused</div>
+    <div class="title" style="font-size:clamp(28px,6vw,48px)">Standing By</div>
+    <div class="sub">The house is still watching.</div>
+    <div class="profile-strip">
+      <div class="pf"><span class="pf-k">Cash</span><span class="pf-v" data-cash>$0</span></div>
+      <div class="pf"><span class="pf-k">Level</span><span class="pf-v" data-level>1</span></div>
+      <div class="pf pf-xp"><span class="pf-k">EXP</span><span class="pf-v" data-exp>0</span>
+        <div class="xp"><div class="xp-fill" data-xpbar></div></div></div>
+    </div>
+    <div class="save-row">
+      <button class="btn small" id="btn-save">Save progress</button>
+      <button class="btn small" id="btn-load">Load save</button>
+    </div>
+    <button class="btn" onclick="resumeGame()" style="margin-top:16px">Resume</button>
+  </div>
+
+  <!-- shared hidden file input for Save/Load (top-level so it works from any menu) -->
+  <input type="file" id="save-file" accept="application/json,.json" hidden />
+
+  <!-- DEATH -->
+  <div id="death" class="overlay">
+    <div class="eyebrow" style="color:var(--red)">Signal Lost</div>
+    <div class="title">You Died</div>
+    <div class="sub">It found you in the dark. The case goes cold.</div>
+    <div id="death-name" class="debrief-name"></div>
+    <div id="death-reward" class="reward"></div>
+    <button class="btn danger" onclick="restartGame()" style="margin-top:20px">New Investigation</button>
+  </div>
+
+  <!-- WIN -->
+  <div id="win" class="overlay">
+    <div class="eyebrow">Case Closed · Debrief</div>
+    <div id="verdict">RESULT</div>
+    <div id="truth"></div>
+    <div id="spirit-name" class="debrief-name"></div>
+    <div id="your-guess"></div>
+    <div id="win-reward" class="reward"></div>
+    <div class="profile-strip">
+      <div class="pf"><span class="pf-k">Cash</span><span class="pf-v" data-cash>$0</span></div>
+      <div class="pf"><span class="pf-k">Level</span><span class="pf-v" data-level>1</span></div>
+      <div class="pf pf-xp"><span class="pf-k">EXP</span><span class="pf-v" data-exp>0</span>
+        <div class="xp"><div class="xp-fill" data-xpbar></div></div></div>
+    </div>
+    <button class="btn" onclick="restartGame()" style="margin-top:22px">New Investigation</button>
+  </div>
+
+  <!-- JOURNAL -->
+  <div id="journal">
+    <div class="book">
+      <h2>Evidence Log</h2>
+      <div class="jscroll">
+        <div id="evidence-list"></div>
+        <h2>Suspect</h2>
+        <div id="ghost-list"></div>
+        <div id="guess-status"></div>
+      </div>
+      <div class="jclose" id="journal-close">Close</div>
+    </div>
+  </div>
+
+  <!-- SHOP -->
+  <div id="shop">
+    <div class="shop-box">
+      <h2>Supplies</h2>
+      <div class="shop-sub">The quartermaster's stall.</div>
+      <div class="shop-scroll">
+        <div class="shop-item"><span class="si-name">EMF Reader</span><span class="si-tag">EQUIPPED</span></div>
+        <div class="shop-item"><span class="si-name">Thermometer</span><span class="si-tag">EQUIPPED</span></div>
+        <div class="shop-item"><span class="si-name">UV Light</span><span class="si-tag">EQUIPPED</span></div>
+        <div class="shop-item">
+          <span class="si-name">Ghost Writing Book</span>
+          <button class="si-buy" id="buy-book" data-cost="60">$60</button>
+        </div>
+        <div class="shop-item"><span class="si-name">Sanity Pills</span><span class="si-tag">SOON</span></div>
+        <div class="shop-item"><span class="si-name">Spare Batteries</span><span class="si-tag">SOON</span></div>
+        <div class="shop-item"><span class="si-name">Crucifix</span><span class="si-tag">SOON</span></div>
+        <div class="shop-item"><span class="si-name">Motion Sensor</span><span class="si-tag">SOON</span></div>
+      </div>
+      <div class="shop-cash">Cash on hand: <b data-cash>$0</b></div>
+      <div class="jclose" id="shop-close" style="margin-top:14px">Close</div>
+    </div>
+  </div>
+
+  <script>
+/* ============================================================
+   PHANTOM MANOR — investigation prototype (three.js r128)
+   ============================================================ */
+
+const CFG = {
+  eye: 1.6, radius: 0.35,
+  walk: 3.0, sprint: 5.4,
+  staminaMax: 100, staminaDrain: 26, staminaRegen: 11,
+  sensitivity: 0.0022, touchSens: 0.005,
+  sanityDarkDrain: 0.55, sanityNearGhostMul: 2.6, sanityFlashlightMul: 0.55,
+  huntEarliest: 30, huntCheckEvery: 5, huntSanityThresh: 55,
+  huntCooldown: 24, huntDuration: 18, huntWarn: 2.6,
+  ghostRoam: 0.75, ghostHuntSpeed: 2.75, catchRadius: 1.35, sightRange: 34,
+  emfRadius: 6, coldRadius: 7, interact: 2.4, hideRange: 1.9,
+};
+let GHOST_HOME = { x: -7, z: -7 };   // the ghost's favourite room — chosen fresh each investigation
+const ROOMS = [
+  { x: -7, z: -7 }, // bedroom
+  { x: 5,  z: -7 }, // living room
+  { x: -6, z: 6  }, // hall / kitchen
+  { x: 8,  z: 1  }, // upper east room
+  { x: 8,  z: 9  }, // lower east room
+];
+let homeRoom = ROOMS[0];
+
+// A spirit "writes" if and only if "ghostwriting" is one of its evidence types.
+// Writing spirits answer book questions AND log Ghost Writing evidence when they do.
+const GHOSTS = [
+  { name: "Spirit",       ev: ["emf5", "fingerprints"] },
+  { name: "Wraith",       ev: ["emf5", "freezing"] },
+  { name: "Phantom",      ev: ["freezing", "fingerprints"] },
+  { name: "Banshee",      ev: ["emf5", "freezing", "fingerprints"] },
+  { name: "Yurei",        ev: ["freezing"] },
+  { name: "Demon",        ev: ["emf5"] },
+  { name: "Shade",        ev: ["fingerprints"] },
+  // spirits that communicate through the ghost writing book
+  { name: "Poltergeist",  ev: ["emf5", "ghostwriting"] },
+  { name: "Revenant",     ev: ["freezing", "ghostwriting"] },
+  { name: "Onryo",        ev: ["fingerprints", "ghostwriting"] },
+];
+// eerie causes of death the spirit may write when it answers
+const DEATHS = ["a fall from the landing", "the winter fever", "the well behind the house",
+  "the fire that took the east wing", "a stranger at the door", "grief, after the others left",
+  "the sickness that emptied the village", "cold water and a still night"];
+const EV_LABEL = { emf5: "EMF Level 5", freezing: "Freezing Temps", fingerprints: "Fingerprints", ghostwriting: "Ghost Writing" };
+
+// spirit given-names, revealed in the debrief once the case is closed
+const GHOST_FIRST = ["Eleanor","Thomas","Margaret","Josiah","Agnes","Edmund","Clara","Silas",
+  "Rosalind","Nathaniel","Mabel","Ambrose","Lydia","Cornelius","Beatrice","Ezra","Ottoline","Barnaby"];
+const GHOST_LAST = ["Ashcroft","Blackwood","Vane","Holloway","Crane","Marsh","Thorne","Wilder",
+  "Grimshaw","Fenwick","Sable","Merriweather","Hale","Winterbourne","Corvish","Dunmore"];
+
+// difficulty scales the payout and how readily the haunt turns to hunt
+const DIFFICULTIES = {
+  amateur:      { label: "Amateur",      rewardMul: 1.0, sanityDrainMul: 0.85, huntThresh: 50 },
+  intermediate: { label: "Intermediate", rewardMul: 1.6, sanityDrainMul: 1.0,  huntThresh: 60 },
+  professional: { label: "Professional", rewardMul: 2.5, sanityDrainMul: 1.3,  huntThresh: 70 },
+};
+// reward table (before the difficulty multiplier)
+const PAYOUT = { expBase: 25, expCorrect: 75, cashBase: 15, cashCorrect: 45, expDeath: 10 };
+
+const T = 0.3, WALL_H = 3.0;
+// interior wall centrelines; south wall has the front-door gap at x -7..-5
+const SEGMENTS = [
+  [-12,-12, 12,-12], [-12,12, -7,12], [-5,12, 12,12], [-12,-12,-12,12], [12,-12,12,12],
+  [-12,-2, -8,-2], [-6,-2, 2,-2], [4,-2, 12,-2],
+  [-2,-12,-2,-7], [-2,-5,-2,-2],
+  [4,-2,4,6], [4,8,4,12],
+  [4,5,8,5], [10,5,12,5],
+];
+const FURNITURE = [
+  { cx:-9,  cz:-9,  w:2.6, d:1.7, h:0.55, color:0x3a2f27, los:false },
+  { cx:-11, cz:-4,  w:1.3, d:1.1, h:2.2,  color:0x2a2320, los:true, hide:true },
+  { cx:-11, cz:-10, w:0.8, d:0.8, h:0.7,  color:0x2a2320, los:false },
+  { cx:0.6, cz:-3.4,w:3.0, d:1.2, h:0.7,  color:0x36302b, los:false },
+  { cx:11,  cz:-8,  w:1.6, d:0.8, h:2.4,  color:0x241d19, los:true, hide:true },
+  { cx:3,   cz:-6,  w:1.6, d:0.9, h:0.5,  color:0x30291f, los:false },
+  { cx:-10, cz:10,  w:3.2, d:1.0, h:1.0,  color:0x272320, los:false },
+  { cx:-2,  cz:8,   w:1.8, d:1.0, h:0.75, color:0x30291f, los:false },
+  { cx:11,  cz:2,   w:1.4, d:1.0, h:2.2,  color:0x2a2320, los:true, hide:true },
+  { cx:8,   cz:10,  w:1.6, d:0.8, h:0.75, color:0x30291f, los:false },
+  { cx:2.6, cz:11.2,w:1.3, d:1.0, h:2.3,  color:0x1c2a2e, los:true, hide:true }, // locker
+];
+const DOORC = { x: -6, z: 12 };            // front door centre (entrance)
+const SHOPC = { x: -9.5, z: 15 };          // supplies stall
+const SPAWN = { x: -6, z: 16.2 };          // outside, facing the door
+const CARC  = { x: 6.5, z: 16 };           // the investigators' car — walk up to it to leave
+const NOTEC = { x: -4.2, z: 12 };          // memorial note on the front wall bearing the spirit's name
+
+// ============================================================
+let renderer, scene, camera, clock;
+let flashlight, eventLight, moon;
+const BOXES = [];            // {minX,maxX,minZ,maxZ,los,tag}
+const HIDES = [];            // {x,z}
+let ghost, ghostMat, handprints, doorMesh, doorBox = null;
+const INT_DOORS = [];        // {hinge, cx, cz, closed, open} interior doors that swing open near the player
+const houseLights = [];      // ceiling fixtures we flicker before a manifestation
+const SWITCHES = [];         // wall-mounted light switches, one per room
+let woodTex = null;
+
+// persistent player profile (cash / exp / level). Level is derived from exp.
+const profile = { cash: 0, exp: 0, level: 1 };
+let lastReward = null;       // summary of the most recent contract, shown on the debrief
+
+const state = {
+  running: false, paused: false, dead: false, won: false, hidden: false,
+  investigating: false,
+  yaw: 0, pitch: 0,
+  sanity: 100, stamina: CFG.staminaMax,
+  flashlightOn: true,
+  tool: 0,                   // 0 flashlight, 1 EMF, 2 Thermo, 3 UV
+  time: 0, startTime: 0,
+  lastHuntCheck: 0, huntEndsAt: -1, nextHuntAllowed: 0,
+  pendingHunt: false, huntWarnUntil: 0, flickerUntil: 0,
+  emfReading: 1, temp: 12, emfBoostUntil: 0,
+  evidence: { emf5: false, freezing: false, fingerprints: false, ghostwriting: false },
+  guess: null, ghostType: null, ghostName: "",
+  difficulty: "amateur",
+  ghostAge: 0, ghostDeath: "", ghostFriendly: false, ghostWrites: false, signChance: 0.6,
+  hasBook: false, bookPlaced: false, bookPending: false, bookText: null, pendingSignAt: 0, bookPos: { x: 0, z: 0 },
+  roamTarget: { x: GHOST_HOME.x, z: GHOST_HOME.z }, dwell: 0,
+  nextEvent: 0, eventFlashUntil: 0,
+  promptText: "", promptAction: null,
+  _err: 0,
+};
+
+const keys = {};
+const IS_TOUCH = (typeof matchMedia === "function" && matchMedia("(pointer:coarse)").matches) || ("ontouchstart" in window);
+const joy = { id: null, bx: 0, by: 0, dx: 0, dy: 0 };
+const look = { id: null, lx: 0, ly: 0 };
+let uvActive = false, journalOpen = false, shopOpen = false, seanceOpen = false, bookOpen = false, interactPrev = false;
+let bookMesh = null, recog = null;
+
+function box(minX, maxX, minZ, maxZ, los, tag) { const b = { minX, maxX, minZ, maxZ, los, tag }; BOXES.push(b); return b; }
+function dist2(ax, az, bx, bz) { return Math.hypot(ax - bx, az - bz); }
+function near(p, c, r) { return dist2(p.x, p.z, c.x, c.z) < r; }
+
+function makeNoiseTexture(r, g, b, spread) {
+  const s = 128, c = document.createElement("canvas"); c.width = c.height = s;
+  const ctx = c.getContext("2d"), img = ctx.createImageData(s, s);
+  for (let i = 0; i < s * s; i++) {
+    const n = (Math.random() - 0.5) * spread;
+    img.data[i*4] = clamp255(r + n); img.data[i*4+1] = clamp255(g + n);
+    img.data[i*4+2] = clamp255(b + n); img.data[i*4+3] = 255;
+  }
+  ctx.putImageData(img, 0, 0);
+  const tex = new THREE.CanvasTexture(c); tex.wrapS = tex.wrapT = THREE.RepeatWrapping; return tex;
+}
+function clamp255(v) { return Math.max(0, Math.min(255, v)); }
+
+// procedural wood: warm base, vertical grain streaks, dark plank seams.
+// planks=number of boards across the tile; used for floorboards and doors.
+function makeWoodTexture(planks) {
+  const s = 256, c = document.createElement("canvas"); c.width = c.height = s;
+  const ctx = c.getContext("2d");
+  ctx.fillStyle = "#3a2b1d"; ctx.fillRect(0, 0, s, s);
+  // grain streaks
+  for (let i = 0; i < 900; i++) {
+    const x = Math.random() * s, y = Math.random() * s, len = 10 + Math.random() * 60;
+    const shade = 40 + Math.random() * 55;
+    ctx.strokeStyle = `rgba(${shade + 30},${shade + 12},${shade - 6},0.16)`;
+    ctx.lineWidth = 0.6 + Math.random() * 1.2;
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + (Math.random() - 0.5) * 6, y + len); ctx.stroke();
+  }
+  // plank seams (dark grooves) + a highlight lip
+  const pw = s / planks;
+  for (let p = 0; p <= planks; p++) {
+    const x = Math.round(p * pw);
+    ctx.fillStyle = "rgba(10,7,4,0.85)"; ctx.fillRect(x - 1, 0, 2, s);
+    ctx.fillStyle = "rgba(120,92,60,0.12)"; ctx.fillRect(x + 1, 0, 1, s);
+  }
+  // a few knots
+  for (let k = 0; k < planks; k++) {
+    if (Math.random() < 0.5) continue;
+    const kx = (k + 0.5) * pw, ky = Math.random() * s, r = 3 + Math.random() * 5;
+    const g = ctx.createRadialGradient(kx, ky, 0, kx, ky, r);
+    g.addColorStop(0, "rgba(20,12,6,0.9)"); g.addColorStop(1, "rgba(20,12,6,0)");
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(kx, ky, r, 0, Math.PI * 2); ctx.fill();
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  return tex;
+}
+
+// draws one or more centred lines of text onto a canvas texture (for the shop sign and the note)
+function makeTextTexture(lines, opts) {
+  opts = opts || {};
+  const w = opts.w || 512, h = opts.h || 256;
+  const c = document.createElement("canvas"); c.width = w; c.height = h;
+  const ctx = c.getContext("2d");
+  ctx.fillStyle = opts.bg || "#e0a94e"; ctx.fillRect(0, 0, w, h);
+  if (opts.grain) { // faint paper texture for the note
+    for (let i = 0; i < 700; i++) {
+      ctx.fillStyle = `rgba(120,96,60,${Math.random() * 0.06})`;
+      ctx.fillRect(Math.random() * w, Math.random() * h, 1, 1 + Math.random() * 2);
+    }
+  }
+  if (opts.border) { ctx.strokeStyle = opts.border; ctx.lineWidth = opts.borderW || 8; ctx.strokeRect(7, 7, w - 14, h - 14); }
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  const arr = Array.isArray(lines) ? lines : [lines];
+  const gap = h / (arr.length + 1);
+  arr.forEach((ln, i) => {
+    const o = (typeof ln === "string") ? { text: ln } : ln;
+    ctx.fillStyle = o.color || opts.fg || "#1a120a";
+    ctx.font = (o.weight || "700") + " " + (o.size || 60) + "px " + (opts.font || "Georgia, 'Times New Roman', serif");
+    ctx.fillText(o.text, w / 2, gap * (i + 1));
+  });
+  const tex = new THREE.CanvasTexture(c); tex.anisotropy = 4;
+  return tex;
+}
+
+// ============================================================
+function init() {
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x05060a);
+  scene.fog = new THREE.Fog(0x05060a, 4, 34);
+
+  camera = new THREE.PerspectiveCamera(74, innerWidth / innerHeight, 0.1, 200);
+  camera.position.set(SPAWN.x, CFG.eye, SPAWN.z);
+  camera.rotation.order = "YXZ";
+
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(innerWidth, innerHeight);
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  document.getElementById("app").appendChild(renderer.domElement);
+
+  scene.add(new THREE.AmbientLight(0x223044, 0.16));
+  scene.add(new THREE.HemisphereLight(0x223044, 0x090a0d, 0.1));
+  moon = new THREE.DirectionalLight(0x6f86b8, 0.5);
+  moon.position.set(-8, 16, 22); scene.add(moon);
+
+  flashlight = new THREE.SpotLight(0xfff2d6, 2.4, 30, Math.PI / 6.5, 0.45, 1.2);
+  flashlight.position.set(0, 0, 0.15);
+  flashlight.castShadow = true;
+  flashlight.shadow.mapSize.set(1024, 1024);
+  flashlight.shadow.camera.near = 0.2; flashlight.shadow.camera.far = 30;
+  camera.add(flashlight);
+  const ftarget = new THREE.Object3D(); ftarget.position.set(0, 0, -1);
+  camera.add(ftarget); flashlight.target = ftarget;
+  scene.add(camera);
+
+  // pick the ghost's favourite room for this investigation (drives roaming + cold spot)
+  homeRoom = ROOMS[(Math.random() * ROOMS.length) | 0];
+  GHOST_HOME = { x: homeRoom.x, z: homeRoom.z };
+  state.roamTarget = { x: GHOST_HOME.x, z: GHOST_HOME.z };
+
+  eventLight = new THREE.PointLight(0xffcaa0, 0, 7); eventLight.position.set(GHOST_HOME.x, 2.3, GHOST_HOME.z);
+  scene.add(eventLight);
+
+  woodTex = makeWoodTexture(6);
+  buildInterior();
+  buildLightSwitches();
+  buildExterior();
+  buildRoof();
+  buildCar();
+  buildDoor();
+  buildInteriorDoors();
+  buildFingerprints();
+  buildGhost();
+  if (!state.ghostType) pickHaunt();
+  buildSpiritNote();
+
+  clock = new THREE.Clock();
+  addEventListener("resize", onResize);
+  setupInput();
+  document.body.classList.toggle("touch", IS_TOUCH);
+  animate();
+}
+
+function buildInterior() {
+  // wood floorboards across the whole house
+  const floorTex = makeWoodTexture(6); floorTex.repeat.set(6, 6);
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(24, 24),
+    new THREE.MeshStandardMaterial({ map: floorTex, roughness: 0.82, metalness: 0.02 }));
+  floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
+
+  const ceil = new THREE.Mesh(new THREE.PlaneGeometry(24, 24),
+    new THREE.MeshStandardMaterial({ color: 0x0a0b0e, roughness: 1 }));
+  ceil.rotation.x = Math.PI / 2; ceil.position.y = WALL_H; scene.add(ceil);
+
+  buildCeilingLights();
+
+  const wallTex = makeNoiseTexture(46, 44, 50, 20);
+  for (const [x1, z1, x2, z2] of SEGMENTS) {
+    const horizontal = z1 === z2;
+    let minX, maxX, minZ, maxZ;
+    if (horizontal) { minX = Math.min(x1, x2) - T/2; maxX = Math.max(x1, x2) + T/2; minZ = z1 - T/2; maxZ = z1 + T/2; }
+    else { minZ = Math.min(z1, z2) - T/2; maxZ = Math.max(z1, z2) + T/2; minX = x1 - T/2; maxX = x1 + T/2; }
+    const sx = maxX - minX, sz = maxZ - minZ;
+    const t = wallTex.clone(); t.needsUpdate = true;
+    t.repeat.set(Math.max(1, (horizontal ? sx : sz) / 2), WALL_H / 2);
+    const m = new THREE.Mesh(new THREE.BoxGeometry(sx, WALL_H, sz),
+      new THREE.MeshStandardMaterial({ map: t, roughness: 0.9 }));
+    m.position.set((minX + maxX) / 2, WALL_H / 2, (minZ + maxZ) / 2);
+    m.castShadow = true; m.receiveShadow = true; scene.add(m);
+    box(minX, maxX, minZ, maxZ, true);
+  }
+
+  for (const f of FURNITURE) {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(f.w, f.h, f.d),
+      new THREE.MeshStandardMaterial({ color: f.color, roughness: 0.85 }));
+    m.position.set(f.cx, f.h / 2, f.cz);
+    m.castShadow = true; m.receiveShadow = true; scene.add(m);
+    box(f.cx - f.w/2, f.cx + f.w/2, f.cz - f.d/2, f.cz + f.d/2, !!f.los);
+    if (f.hide) HIDES.push({ x: f.cx, z: f.cz });
+  }
+}
+
+function buildExterior() {
+  const grassTex = makeNoiseTexture(20, 30, 22, 20); grassTex.repeat.set(10, 4);
+  const yard = new THREE.Mesh(new THREE.PlaneGeometry(30, 9.3),
+    new THREE.MeshStandardMaterial({ map: grassTex, roughness: 1 }));
+  yard.rotation.x = -Math.PI / 2; yard.position.set(0, 0.01, 16.85); yard.receiveShadow = true; scene.add(yard);
+
+  // fences enclosing the front yard (z 12..19)
+  const fenceMat = new THREE.MeshStandardMaterial({ color: 0x20262c, roughness: 0.9 });
+  const fence = (minX, maxX, minZ, maxZ) => {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(maxX - minX, 1.2, maxZ - minZ), fenceMat);
+    m.position.set((minX+maxX)/2, 0.6, (minZ+maxZ)/2); m.castShadow = true; scene.add(m);
+    box(minX, maxX, minZ, maxZ, false);
+  };
+  fence(-13, -12.7, 12, 19);   // west
+  fence(12.7, 13, 12, 19);     // east
+  fence(-13, 13, 18.7, 19);    // south
+
+  // supplies stall (west side of yard)
+  const stall = new THREE.Mesh(new THREE.BoxGeometry(2.4, 1.0, 1.2),
+    new THREE.MeshStandardMaterial({ color: 0x2a2118, roughness: 0.85 }));
+  stall.position.set(SHOPC.x, 0.5, SHOPC.z); stall.castShadow = true; scene.add(stall);
+  box(SHOPC.x - 1.2, SHOPC.x + 1.2, SHOPC.z - 0.6, SHOPC.z + 0.6, false);
+  const signTex = makeTextTexture("SUPPLIES",
+    { w: 512, h: 150, bg: "#e0a94e", fg: "#211508", border: "#3a2b12", borderW: 12, size: 92 });
+  const sign = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 0.55),
+    new THREE.MeshBasicMaterial({ map: signTex }));
+  sign.position.set(SHOPC.x, 1.7, SHOPC.z - 0.55); scene.add(sign);
+  const post = new THREE.PointLight(0xe0a94e, 0.6, 6); post.position.set(SHOPC.x, 2.2, SHOPC.z); scene.add(post);
+
+  // porch light by the door
+  const porch = new THREE.PointLight(0xffd9a0, 0.7, 8); porch.position.set(DOORC.x, 2.6, 13); scene.add(porch);
+}
+
+function makeTri(a, b, c, mat) {
+  const g = new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.Float32BufferAttribute([a[0],a[1],a[2], b[0],b[1],b[2], c[0],c[1],c[2]], 3));
+  g.computeVertexNormals();
+  return new THREE.Mesh(g, mat);
+}
+
+function buildRoof() {
+  const mat = new THREE.MeshStandardMaterial({ color: 0x14181d, roughness: 1, side: THREE.DoubleSide });
+  // hip roof over the house footprint (x,z in ±12), eaves overhang to ±12.8
+  const e = 12.8, ey = WALL_H + 0.2, apex = [0, WALL_H + 2.5, 0];
+  const c1 = [-e, ey, -e], c2 = [e, ey, -e], c3 = [e, ey, e], c4 = [-e, ey, e];
+  scene.add(makeTri(c1, c2, apex, mat));
+  scene.add(makeTri(c2, c3, apex, mat));
+  scene.add(makeTri(c3, c4, apex, mat));
+  scene.add(makeTri(c4, c1, apex, mat));
+}
+
+// a fresh wood material for a door leaf sized w×h (so grain runs the right way)
+function woodDoorMaterial(w, h) {
+  const t = woodTex.clone(); t.needsUpdate = true;
+  t.repeat.set(Math.max(1, w / 1.1), Math.max(1, h / 2.6));
+  return new THREE.MeshStandardMaterial({ map: t, roughness: 0.72, metalness: 0.03 });
+}
+
+function buildDoor() {
+  doorMesh = new THREE.Mesh(new THREE.BoxGeometry(2.0, 2.6, 0.16), woodDoorMaterial(2.0, 2.6));
+  // hinge group so it swings from the left jamb (x = -7)
+  const hinge = new THREE.Group();
+  hinge.position.set(-7, 0, 12);
+  doorMesh.position.set(1.0, 1.3, 0); // centre of the 2m leaf, offset from hinge
+  hinge.add(doorMesh); scene.add(hinge);
+  doorMesh.userData.hinge = hinge;
+  const knob = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 6),
+    new THREE.MeshStandardMaterial({ color: 0xcaa14e, metalness: 0.6, roughness: 0.4 }));
+  knob.position.set(1.8, 0, 0.1); doorMesh.add(knob);
+  doorBox = box(-7, -5, 11.85, 12.15, true, "door");
+}
+
+// small hanging fixtures with a warm point light in each room; each starts randomly on or off
+function buildCeilingLights() {
+  const spots = [
+    { x: -7, z: -7 }, { x: 5, z: -7 }, { x: -6, z: 6 }, { x: 8, z: 2 }, { x: 8, z: 9 }, { x: -1, z: 4 },
+  ];
+  const ON_BASE = 2.6;   // "on" is now far brighter than before — clearly lights a room, brighter than the torch
+  for (const s of spots) {
+    const on = Math.random() < 0.5;
+    const cord = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.5, 5),
+      new THREE.MeshStandardMaterial({ color: 0x111417 }));
+    cord.position.set(s.x, WALL_H - 0.25, s.z); scene.add(cord);
+    const shade = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.32, 12, 1, true),
+      new THREE.MeshStandardMaterial({ color: 0x1c232a, side: THREE.DoubleSide,
+        emissive: 0xffcf8a, emissiveIntensity: on ? 0.5 : 0.02, roughness: 0.7 }));
+    shade.position.set(s.x, WALL_H - 0.55, s.z); scene.add(shade);
+    const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 6),
+      new THREE.MeshBasicMaterial({ color: on ? 0xffe6b0 : 0x140d05 }));
+    bulb.position.set(s.x, WALL_H - 0.62, s.z); scene.add(bulb);
+    const lp = new THREE.PointLight(0xffe1b0, on ? ON_BASE : 0, 11, 1.3);
+    lp.position.set(s.x, WALL_H - 0.6, s.z); scene.add(lp);
+    houseLights.push({ light: lp, bulb, shade, base: ON_BASE, on, x: s.x, z: s.z });
+  }
+}
+
+// a wall-mounted switch in each room, flush to the wall; flip it to toggle that room's light
+function buildLightSwitches() {
+  const SW = [
+    { i: 0, x: -11.84, z: -7, face:  1 }, // bedroom — west wall
+    { i: 1, x:  11.84, z: -7, face: -1 }, // living — east wall
+    { i: 2, x: -11.84, z:  6, face:  1 }, // hall/kitchen — west wall
+    { i: 3, x:  11.84, z: -0.5, face: -1 }, // upper-east — east wall (moved clear of the locker at z=2)
+    { i: 4, x:  11.84, z:  9, face: -1 }, // lower-east — east wall
+    { i: 5, x:   3.84, z:  4, face: -1 }, // central — x=4 wall
+  ];
+  for (const d of SW) {
+    const h = houseLights[d.i]; if (!h) continue;
+    const grp = new THREE.Group();
+    const plate = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.26, 0.17),
+      new THREE.MeshStandardMaterial({ color: 0x0e1216, roughness: 0.6 }));
+    grp.add(plate);
+    const ind = new THREE.Mesh(new THREE.SphereGeometry(0.025, 8, 6),
+      new THREE.MeshBasicMaterial({ color: h.on ? 0x9be0a0 : 0x4a1414 }));
+    ind.position.set(d.face * 0.045, 0.08, 0); grp.add(ind);
+    const nub = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.10, 0.055),
+      new THREE.MeshStandardMaterial({ color: 0x1c232a, roughness: 0.5 }));
+    nub.position.set(d.face * 0.05, h.on ? -0.03 : 0.03, 0); grp.add(nub);
+    grp.position.set(d.x, 1.3, d.z); scene.add(grp);
+    SWITCHES.push({ cx: d.x, cz: d.z, light: h, ind: ind.material, nub });
+  }
+}
+
+function toggleSwitch(sw) {
+  sw.light.on = !sw.light.on;
+  sw.ind.color.setHex(sw.light.on ? 0x9be0a0 : 0x4a1414);
+  sw.nub.position.y = sw.light.on ? -0.03 : 0.03;
+  tone("square", 300, 190, 0.12, 0.05);   // a soft click
+}
+
+// closed wood doors set into the interior doorways; they swing open as you approach
+// and drift shut behind you. Non-colliding, so they never trap the player or the haunt.
+function buildInteriorDoors() {
+  // each: fixed axis of the wall, the fixed coord, and the [a,b] span of the gap
+  const DEFS = [
+    { axis: "z", at: -2, a: -7, b: -5, swing: -1 }, // bedroom ↔ living room
+    { axis: "x", at: -2, a: -8, b: -6, swing: 1 },  // bedroom ↔ hall
+    { axis: "x", at: -2, a: 2,  b: 4,  swing: -1 }, // centre ↔ east
+    { axis: "z", at: 4,  a: 6,  b: 8,  swing: 1 },  // east corridor
+    { axis: "x", at: 5,  a: 8,  b: 10, swing: -1 }, // lower-east room
+  ];
+  for (const d of DEFS) {
+    const len = Math.abs(d.b - d.a), lo = Math.min(d.a, d.b);
+    const hinge = new THREE.Group();
+    const leaf = new THREE.Mesh(
+      d.axis === "z"
+        ? new THREE.BoxGeometry(0.12, 2.6, len)   // wall runs along Z (fixed X)
+        : new THREE.BoxGeometry(len, 2.6, 0.12),  // wall runs along X (fixed Z)
+      woodDoorMaterial(len, 2.6));
+    leaf.castShadow = true; leaf.receiveShadow = true;
+    let cx, cz;
+    if (d.axis === "z") {                          // hinge on one jamb, leaf spans +Z
+      hinge.position.set(d.at, 0, lo);
+      leaf.position.set(0, 1.3, len / 2);
+      cx = d.at; cz = lo + len / 2;
+    } else {                                        // hinge on one jamb, leaf spans +X
+      hinge.position.set(lo, 0, d.at);
+      leaf.position.set(len / 2, 1.3, 0);
+      cx = lo + len / 2; cz = d.at;
+    }
+    const knob = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 6),
+      new THREE.MeshStandardMaterial({ color: 0xb9954a, metalness: 0.5, roughness: 0.45 }));
+    knob.position.copy(leaf.position);
+    if (d.axis === "z") knob.position.z += len / 2 - 0.16; else knob.position.x += len / 2 - 0.16;
+    knob.position.y = 1.15; hinge.add(knob);
+    hinge.add(leaf); scene.add(hinge);
+    INT_DOORS.push({ hinge, cx, cz, cur: 0, target: 0, openAngle: (Math.PI * 0.58) * d.swing });
+  }
+}
+
+function buildCar() {
+  const grp = new THREE.Group();
+  const bodyMat = new THREE.MeshStandardMaterial({ color: 0x2a3138, roughness: 0.5, metalness: 0.4 });
+  const glassMat = new THREE.MeshStandardMaterial({ color: 0x0c1418, roughness: 0.25, metalness: 0.2 });
+  const tyreMat = new THREE.MeshStandardMaterial({ color: 0x0a0c0e, roughness: 0.9 });
+  const body = new THREE.Mesh(new THREE.BoxGeometry(4.1, 0.9, 1.9), bodyMat);
+  body.position.y = 0.75; grp.add(body);
+  const cabin = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.8, 1.7), bodyMat);
+  cabin.position.set(-0.1, 1.4, 0); grp.add(cabin);
+  const glass = new THREE.Mesh(new THREE.BoxGeometry(2.25, 0.55, 1.55), glassMat);
+  glass.position.set(-0.1, 1.42, 0); grp.add(glass);
+  for (const [wx, wz] of [[-1.3, 1], [1.3, 1], [-1.3, -1], [1.3, -1]]) {
+    const w = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.35, 14), tyreMat);
+    w.rotation.x = Math.PI / 2; w.position.set(wx, 0.42, wz); grp.add(w);
+  }
+  // headlamps pointing at the gate
+  for (const hz of [-0.6, 0.6]) {
+    const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.12, 10, 8),
+      new THREE.MeshBasicMaterial({ color: 0xfff0c8 }));
+    lamp.position.set(-2.05, 0.8, hz); grp.add(lamp);
+  }
+  const head = new THREE.SpotLight(0xfff0c8, 0.9, 18, Math.PI / 7, 0.5, 1.4);
+  head.position.set(-2.1, 0.8, 0);
+  const ht = new THREE.Object3D(); ht.position.set(-8, 0.4, 0); grp.add(ht); head.target = ht;
+  grp.add(head);
+  grp.position.set(CARC.x, 0, CARC.z); grp.rotation.y = Math.PI / 2; grp.castShadow = true;
+  scene.add(grp);
+  box(CARC.x - 1.1, CARC.x + 1.1, CARC.z - 2.2, CARC.z + 2.2, false); // collide with the car body
+}
+
+// a weathered memorial note nailed to the front wall, bearing the spirit's name
+function buildSpiritNote() {
+  const tex = makeTextTexture([
+    { text: "— IN MEMORIAM —", size: 34, color: "#5a4326" },
+    { text: state.ghostName, size: 58, color: "#241708", weight: "700" },
+    { text: "rest, and trouble us no more", size: 26, color: "#6a5334" },
+  ], { w: 512, h: 340, bg: "#d9c9a5", grain: true, border: "#8a744a", borderW: 9,
+       font: "Georgia, 'Times New Roman', serif" });
+  const note = new THREE.Mesh(new THREE.PlaneGeometry(0.92, 0.62),
+    new THREE.MeshBasicMaterial({ map: tex }));
+  note.position.set(NOTEC.x, 1.55, NOTEC.z + 0.17); scene.add(note);
+  // a small nail + a dim reading light so it's legible at night
+  const nail = new THREE.Mesh(new THREE.SphereGeometry(0.03, 6, 5),
+    new THREE.MeshStandardMaterial({ color: 0x776655, metalness: 0.6, roughness: 0.5 }));
+  nail.position.set(NOTEC.x, 1.86, NOTEC.z + 0.18); scene.add(nail);
+  const gl = new THREE.PointLight(0xffe6c0, 0.35, 3.2); gl.position.set(NOTEC.x, 1.7, NOTEC.z + 0.9); scene.add(gl);
+}
+
+function buildFingerprints() {
+  // green handprints mounted FLAT on the bedroom wall (x=-2 divider, facing into the room)
+  const tex = makeHandprintTexture();
+  const grp = new THREE.Group();
+  const p1 = new THREE.Mesh(new THREE.PlaneGeometry(0.62, 0.82),
+    new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0, depthWrite: false }));
+  p1.position.set(-2.28, 1.25, -3.6); p1.rotation.y = -Math.PI / 2;
+  const p2 = p1.clone(); p2.material = p1.material; p2.position.set(-2.28, 1.05, -4.2);
+  p2.rotation.z = 0.3; p2.scale.set(0.8, 0.8, 0.8);
+  grp.add(p1); grp.add(p2); scene.add(grp);
+  handprints = p1.material; // shared material controls opacity
+  p2.material = handprints;
+}
+
+function makeHandprintTexture() {
+  const s = 128, c = document.createElement("canvas"); c.width = c.height = s;
+  const ctx = c.getContext("2d"); ctx.clearRect(0, 0, s, s);
+  ctx.fillStyle = "rgba(90,240,140,0.92)";
+  ctx.beginPath(); ctx.ellipse(64, 84, 22, 26, 0, 0, Math.PI * 2); ctx.fill();
+  for (let i = 0; i < 5; i++) {
+    const a = -Math.PI / 2 + (i - 2) * 0.4;
+    ctx.beginPath();
+    ctx.ellipse(64 + Math.cos(a) * 30, 58 + Math.sin(a) * 30, 6, 14, a + Math.PI / 2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  return new THREE.CanvasTexture(c);
+}
+
+function buildGhost() {
+  ghost = new THREE.Group();
+  ghostMat = new THREE.MeshStandardMaterial({
+    color: 0xbfd6e6, emissive: 0x223a4a, emissiveIntensity: 0.6,
+    transparent: true, opacity: 0.0, roughness: 0.4,
+  });
+  const body = new THREE.Mesh(new THREE.ConeGeometry(0.42, 1.5, 12), ghostMat); body.position.y = 0.75;
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.26, 16, 12), ghostMat); head.position.y = 1.5;
+  ghost.add(body); ghost.add(head);
+  ghost.position.set(GHOST_HOME.x, 0, GHOST_HOME.z);
+  ghost.visible = false; scene.add(ghost);
+}
+
+// ============================================================
+//  Input (echo-style: dynamic stick + right-drag look + interact button)
+// ============================================================
+function setupInput() {
+  const dom = renderer.domElement;
+
+  addEventListener("keydown", (e) => {
+    keys[e.code] = true;
+    if (!state.running) return;
+    if (e.code === "KeyF") toggleFlashlight();
+    else if (e.code === "Digit1") setTool(0);
+    else if (e.code === "Digit2") setTool(1);
+    else if (e.code === "Digit3") setTool(2);
+    else if (e.code === "Digit4") setTool(3);
+    else if (e.code === "Digit5" && state.hasBook) setTool(4);
+    else if (e.code === "KeyK") openSeance();
+    else if (e.code === "KeyJ") toggleJournal();
+    else if (e.code === "KeyE") doInteract();
+    else if (e.code === "Escape") { if (journalOpen) toggleJournal(); else if (seanceOpen) closeSeance(); else if (bookOpen) closeBookModal(); else if (shopOpen) closeShop(); else pauseGame(); }
+  });
+  addEventListener("keyup", (e) => { keys[e.code] = false; });
+
+  // desktop mouse look
+  document.addEventListener("mousemove", (e) => {
+    if (document.pointerLockElement !== dom) return;
+    state.yaw -= e.movementX * CFG.sensitivity;
+    state.pitch -= e.movementY * CFG.sensitivity;
+    const lim = Math.PI / 2 - 0.05;
+    state.pitch = Math.max(-lim, Math.min(lim, state.pitch));
+  });
+  document.addEventListener("pointerlockchange", () => {
+    if (IS_TOUCH) return;
+    const locked = document.pointerLockElement === dom;
+    if (!locked && state.running && !state.dead && !state.won && !journalOpen && !shopOpen && !seanceOpen && !bookOpen && !state.paused) pauseGame();
+  });
+  dom.addEventListener("click", () => { if (state.running && !IS_TOUCH && !journalOpen && !shopOpen && !seanceOpen && !bookOpen && !state.paused) lockPointer(); });
+
+  // touch: left ~45% = joystick, right = look
+  if (IS_TOUCH) {
+    const stick = document.getElementById("stick"), knob = document.getElementById("stickKnob");
+    const R = 52;
+    dom.addEventListener("touchstart", (e) => {
+      for (const t of e.changedTouches) {
+        const left = t.clientX < innerWidth * 0.45;
+        if (left && joy.id === null) {
+          joy.id = t.identifier; joy.bx = t.clientX; joy.by = t.clientY; joy.dx = joy.dy = 0;
+          stick.style.left = t.clientX + "px"; stick.style.top = t.clientY + "px";
+          stick.style.opacity = 1; knob.style.transform = "translate(-25px,-25px)";
+        } else if (!left && look.id === null) {
+          look.id = t.identifier; look.lx = t.clientX; look.ly = t.clientY;
+        }
+      }
+    }, { passive: false });
+    dom.addEventListener("touchmove", (e) => {
+      for (const t of e.changedTouches) {
+        if (t.identifier === joy.id) {
+          let dx = t.clientX - joy.bx, dy = t.clientY - joy.by;
+          const m = Math.hypot(dx, dy); if (m > R) { dx = dx / m * R; dy = dy / m * R; }
+          joy.dx = dx / R; joy.dy = dy / R;
+          knob.style.transform = `translate(${dx - 25}px,${dy - 25}px)`;
+        } else if (t.identifier === look.id) {
+          state.yaw -= (t.clientX - look.lx) * CFG.touchSens;
+          state.pitch -= (t.clientY - look.ly) * CFG.touchSens;
+          const lim = Math.PI / 2 - 0.05;
+          state.pitch = Math.max(-lim, Math.min(lim, state.pitch));
+          look.lx = t.clientX; look.ly = t.clientY;
+        }
+      }
+      e.preventDefault();
+    }, { passive: false });
+    const end = (e) => {
+      for (const t of e.changedTouches) {
+        if (t.identifier === joy.id) { joy.id = null; joy.dx = joy.dy = 0; stick.style.opacity = 0; }
+        if (t.identifier === look.id) look.id = null;
+      }
+    };
+    dom.addEventListener("touchend", end);
+    dom.addEventListener("touchcancel", end);
+  }
+
+  // buttons (work on tap + click)
+  const tap = (id, fn) => {
+    const el = document.getElementById(id); if (!el) return;
+    const go = (e) => { e.preventDefault(); e.stopPropagation(); fn(); };
+    el.addEventListener("touchstart", go, { passive: false });
+    el.addEventListener("mousedown", go);
+  };
+  tap("interact", doInteract);
+  tap("b-flash", toggleFlashlight);
+  tap("b-tool", () => setTool(state.tool + 1));
+  tap("b-ask", openSeance);
+  tap("b-journal", toggleJournal);
+  tap("b-pause", pauseGame);
+  document.getElementById("journal-close").addEventListener("click", () => { if (journalOpen) toggleJournal(); });
+  document.getElementById("shop-close").addEventListener("click", closeShop);
+  document.getElementById("seance-close").addEventListener("click", closeSeance);
+  document.getElementById("book-pickup").addEventListener("click", pickUpBook);
+  document.getElementById("book-closebtn").addEventListener("click", closeBookModal);
+  const bb = document.getElementById("buy-book"); if (bb) bb.addEventListener("click", buyBook);
+
+  // hold-to-speak mic (where supported); harmless no-op otherwise
+  const mb = document.getElementById("mic-btn");
+  if (mb) {
+    const down = (e) => { e.preventDefault(); startListening(); };
+    const up = (e) => { e.preventDefault(); stopListening(); };
+    mb.addEventListener("touchstart", down, { passive: false });
+    mb.addEventListener("touchend", up, { passive: false });
+    mb.addEventListener("mousedown", down);
+    mb.addEventListener("mouseup", up);
+    mb.addEventListener("mouseleave", up);
+  }
+
+  setTool(0);
+  updateFlashBtn();
+}
+
+// menu interactions are wired at page load (independent of the 3D scene, which loads later)
+function setupMenu() {
+  document.querySelectorAll("#diff-chips .chip").forEach(ch => {
+    const go = (e) => { e.preventDefault(); e.stopPropagation();
+      state.difficulty = ch.dataset.diff;
+      document.querySelectorAll("#diff-chips .chip").forEach(c => c.classList.toggle("on", c === ch));
+    };
+    ch.addEventListener("touchstart", go, { passive: false });
+    ch.addEventListener("click", go);
+  });
+
+  // save / load — click is the most reliable gesture for file dialogs on iOS
+  const sf = document.getElementById("save-file");
+  const openLoad = () => { if (sf) sf.click(); };
+  ["btn-save", "mm-save"].forEach(id => { const b = document.getElementById(id); if (b) b.addEventListener("click", exportSave); });
+  ["btn-load", "mm-load"].forEach(id => { const b = document.getElementById(id); if (b) b.addEventListener("click", openLoad); });
+  if (sf) sf.addEventListener("change", (e) => { importSave(e.target.files[0]); e.target.value = ""; });
+
+  loadProfile(); updateProfileUI();
+  document.body.classList.toggle("touch", IS_TOUCH);
+
+  // collapsible controls panel — declutters the menu; content lives in a scrollable box
+  const ctog = document.getElementById("controls-toggle");
+  const cpan = document.getElementById("controls-panel");
+  if (ctog && cpan) {
+    const toggle = (e) => { e.preventDefault(); e.stopPropagation();
+      const open = ctog.classList.toggle("open"); cpan.classList.toggle("open", open);
+      ctog.setAttribute("aria-expanded", open ? "true" : "false");
+    };
+    ctog.addEventListener("click", toggle);
+  }
+  if (IS_TOUCH) { const h = document.getElementById("start-hint"); if (h) h.textContent = "Left stick to move · drag right to look"; }
+}
+
+function lockPointer() { if (IS_TOUCH) return; const c = renderer && renderer.domElement; if (c && c.requestPointerLock) { try { c.requestPointerLock(); } catch (e) {} } }
+function unlockPointer() { if (document.exitPointerLock) { try { document.exitPointerLock(); } catch (e) {} } }
+
+function toggleFlashlight() { state.flashlightOn = !state.flashlightOn; updateFlashBtn(); }
+function updateFlashBtn() { const b = document.getElementById("b-flash"); if (b) b.classList.toggle("on", state.flashlightOn); }
+
+function setTool(n) {
+  const count = state.hasBook ? 5 : 4;
+  n = ((n % count) + count) % count;
+  state.tool = n; uvActive = (n === 3);
+  // swapping tools clears the last reading: EMF drops to baseline, thermometer returns to ambient
+  state.emfReading = 1;
+  state.temp = 12;
+  const bt = document.getElementById("b-tool");
+  if (bt) { bt.textContent = ["LIGHT", "EMF", "TEMP", "UV", "BOOK"][n]; bt.classList.toggle("on", n !== 0); }
+}
+
+// ============================================================
+//  Interaction
+// ============================================================
+function computeInteract() {
+  let text = "", action = null;
+  const p = camera.position;
+  if (state.hidden) { text = "Come out"; action = () => setHidden(false); }
+  else if (!state.investigating) {
+    if (near(p, DOORC, CFG.interact)) { text = "Open door"; action = openDoor; }
+    else if (near(p, SHOPC, CFG.interact)) { text = "Browse supplies"; action = openShop; }
+  } else {
+    const hunting = state.huntEndsAt > state.time;
+    let hideSpot = null, bd = CFG.hideRange;
+    for (const h of HIDES) { const d = dist2(p.x, p.z, h.x, h.z); if (d < bd) { bd = d; hideSpot = h; } }
+    let sw = null, sb = 1.7;
+    for (const s of SWITCHES) { const d = dist2(p.x, p.z, s.cx, s.cz); if (d < sb) { sb = d; sw = s; } }
+    const nearBook = state.bookPlaced && near(p, state.bookPos, CFG.interact);
+    if (near(p, CARC, CFG.interact + 0.6)) { text = "Leave in the car"; action = leaveInvestigation; }
+    else if (hunting && hideSpot) { text = "Hide"; action = () => setHidden(true); }   // hiding wins mid-hunt
+    else if (nearBook) { text = "Read book"; action = readBook; }
+    else if (state.tool === 4 && !state.bookPlaced) { text = "Place book"; action = placeBook; }
+    else if (sw) { text = sw.light.on ? "Turn lights off" : "Turn lights on"; action = () => toggleSwitch(sw); }
+    else if (hideSpot) { text = "Hide"; action = () => setHidden(true); }
+  }
+  if (!text && near(p, NOTEC, CFG.interact)) { text = "Read the note"; action = readNote; }
+  state.promptText = text; state.promptAction = action;
+  const el = document.getElementById("interact");
+  if (text) { el.textContent = text; el.classList.add("show"); } else el.classList.remove("show");
+}
+
+function doInteract() {
+  if (!state.running || state.paused || state.dead || state.won || journalOpen || shopOpen || seanceOpen || bookOpen) return;
+  if (state.promptAction) state.promptAction();
+}
+
+function openDoor() {
+  if (state.investigating) return;
+  state.investigating = true;
+  state.startTime = state.time;
+  state.nextHuntAllowed = state.time + CFG.huntEarliest;
+  state.nextEvent = state.time + 6 + Math.random() * 6;
+  ghost.visible = false;
+  // swing door open + remove its collision
+  const hinge = doorMesh.userData.hinge;
+  const t0 = performance.now();
+  const swing = () => { const k = Math.min(1, (performance.now() - t0) / 600); hinge.rotation.y = -k * (Math.PI * 0.62); if (k < 1) requestAnimationFrame(swing); };
+  swing();
+  const i = BOXES.indexOf(doorBox); if (i >= 0) BOXES.splice(i, 1);
+  showToast("The door creaks open. The investigation begins.");
+}
+
+function leaveInvestigation() {
+  state.won = true; unlockPointer();
+  const correct = state.guess && state.guess.name === state.ghostType.name;
+  awardContract(correct, true);
+  document.getElementById("verdict").textContent = correct ? "CORRECT IDENTIFICATION" : (state.guess ? "MISIDENTIFIED" : "NO IDENTIFICATION");
+  document.getElementById("verdict").style.color = correct ? "#41e07a" : "#e0574e";
+  document.getElementById("truth").textContent = "It was a " + state.ghostType.name + " · " + state.ghostType.ev.map(e => EV_LABEL[e]).join(", ");
+  document.getElementById("spirit-name").textContent = "The spirit gave its name as " + state.ghostName + ".";
+  document.getElementById("your-guess").textContent = "Your call: " + (state.guess ? state.guess.name : "none");
+  document.getElementById("win-reward").innerHTML = rewardHTML();
+  updateProfileUI();
+  show("win");
+}
+
+function setHidden(on) {
+  state.hidden = on;
+  document.getElementById("hide-vignette").style.opacity = on ? 1 : 0;
+}
+
+function readNote() { showToast("The note remembers " + state.ghostName + " — say the name and it may answer."); }
+function openShop() { shopOpen = true; unlockPointer(); document.getElementById("shop").style.display = "flex"; }
+function closeShop() { shopOpen = false; document.getElementById("shop").style.display = "none"; if (state.running && !state.dead && !state.won) lockPointer(); }
+
+// ============================================================
+//  Séance — speech-to-text (with tappable fallback) & spirit answers
+// ============================================================
+const PHRASES = [
+  { kind: "sign",     label: "Give me a sign",       note: "It may knock if it wishes to answer", keys: ["give me a sign", "a sign", "sign"] },
+  { kind: "where",    label: "Where are you?",        note: "Rings a bell in its favourite room",  keys: ["where are you", "where"] },
+  { kind: "died",     label: "How did you die?",      note: "Written reply · slow · logs Ghost Writing", keys: ["how did you die", "how you die", "did you die"] },
+  { kind: "happened", label: "What happened to you?", note: "Written reply · slow · logs Ghost Writing", keys: ["what happened"] },
+  { kind: "age",      label: "How old are you?",      note: "Written reply · slow · logs Ghost Writing", keys: ["how old are you", "how old"] },
+  { kind: "friendly", label: "Are you friendly?",     note: "Written reply · slow · logs Ghost Writing", keys: ["are you friendly", "friendly"] },
+];
+
+function micSupported() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  return !!SR && (window.isSecureContext === true);
+}
+function micStatus(msg) { const e = document.getElementById("mic-status"); if (e) e.textContent = msg; }
+
+function openSeance() {
+  if (!state.investigating) { showToast("Speak with the spirit once you're inside."); return; }
+  const list = document.getElementById("seance-list"); list.innerHTML = "";
+  for (const p of PHRASES) {
+    const b = document.createElement("button"); b.className = "phrase";
+    b.innerHTML = p.label + "<small>" + p.note + "</small>";
+    b.addEventListener("click", () => askSpirit(p.kind));
+    list.appendChild(b);
+  }
+  const sup = micSupported(), mb = document.getElementById("mic-btn");
+  mb.classList.toggle("disabled", !sup);
+  mb.textContent = sup ? "Hold to speak" : "Voice unavailable";
+  micStatus(sup ? "" : "Voice needs HTTPS/localhost & a supporting browser — tap a question below.");
+  document.getElementById("seance").classList.add("show");
+  seanceOpen = true; unlockPointer();
+}
+function closeSeance() {
+  seanceOpen = false; document.getElementById("seance").classList.remove("show");
+  stopListening();
+  if (state.running && !state.dead && !state.won) lockPointer();
+}
+
+function onSpeech(t) {
+  t = t.toLowerCase();
+  for (const p of PHRASES) { if (p.keys.some(k => t.includes(k))) { micStatus('Heard: "' + t + '"'); askSpirit(p.kind); return; } }
+  micStatus('Heard: "' + t + '" — no question matched.');
+}
+function startListening() {
+  if (!micSupported()) return;
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  try {
+    recog = new SR(); recog.lang = "en-US"; recog.interimResults = false; recog.maxAlternatives = 1;
+    recog.onresult = (e) => onSpeech(e.results[0][0].transcript);
+    recog.onerror = (e) => { micStatus("Mic: " + (e.error || "error")); setMicLive(false); };
+    recog.onend = () => setMicLive(false);
+    recog.start(); setMicLive(true); micStatus("Listening…");
+  } catch (e) { micStatus("Couldn't start the mic."); setMicLive(false); }
+}
+function stopListening() { try { if (recog) recog.stop(); } catch (e) {} setMicLive(false); }
+function setMicLive(on) { const mb = document.getElementById("mic-btn"); if (mb) mb.classList.toggle("live", on); if (on) mb.textContent = "Listening…"; else if (mb && !mb.classList.contains("disabled")) mb.textContent = "Hold to speak"; }
+
+// the spirit's response to a question (answers arrive on a delay, and may not come at all)
+function askSpirit(kind) {
+  if (!state.investigating) { showToast("Step inside first."); return; }
+  const name = state.ghostName;
+  if (kind === "sign") {
+    micStatus("You call out: \"" + name + ", give me a sign.\"");
+    setTimeout(() => {
+      if (!state.investigating || state.dead) return;
+      if (Math.random() < state.signChance) { knock(); state.emfBoostUntil = state.time + 2.5; showToast("A knock answers from the dark."); }
+      else showToast("Silence. The spirit does not stir.");
+    }, 2000 + Math.random() * 3000);
+    return;
+  }
+  if (kind === "where") {
+    micStatus("\"" + name + ", where are you?\"");
+    ringBell();
+    showToast("A bell rings — follow it to the spirit's room.");
+    return;
+  }
+  // book questions — a reply is written by hand, so it always arrives on a delay
+  if (!state.bookPlaced) { showToast("Place the ghost writing book down first (select it, then Act)."); return; }
+  if (state.bookPending) { showToast("The book is already stirring — give it a moment."); return; }
+  state.bookPending = true;
+  micStatus("\"" + name + "…\" The book lies open. You wait.");
+  showToast("You ask, and wait. If it answers, the page will stir…");
+
+  const willAnswer = state.ghostWrites && Math.random() < 0.6;
+  const delay = 3200 + Math.random() * 3200;   // 3.2–6.4s before anything appears on the page
+
+  // a rustle partway through so the wait reads as deliberate, not broken
+  setTimeout(() => {
+    if (!state.investigating || state.dead || !state.bookPlaced) return;
+    scratch(); micStatus("The pages rustle…");
+  }, delay * 0.55);
+
+  setTimeout(() => {
+    state.bookPending = false;
+    if (!state.investigating || state.dead || !state.bookPlaced) return;
+    if (!willAnswer) { showToast("The pages stay blank. It won't answer that."); micStatus("Nothing. The book is still."); return; }
+    let text = "";
+    if (kind === "died" || kind === "happened") text = "It was " + state.ghostDeath + ".";
+    else if (kind === "age") text = "I am " + state.ghostAge + " years old.";
+    else if (kind === "friendly") text = state.ghostFriendly ? "I mean you no harm." : "You should not have come.";
+    else text = "\u2026";
+    writeInBook(text);
+  }, delay);
+}
+
+// spatial bell at the spirit's favourite room: gain by distance, stereo pan by facing
+function ringBell() {
+  if (!actx) return;
+  const cam = camera.position, dx = GHOST_HOME.x - cam.x, dz = GHOST_HOME.z - cam.z;
+  const dist = Math.hypot(dx, dz);
+  const vol = Math.max(0.06, Math.min(0.85, 4 / (2 + dist)));
+  let rel = Math.atan2(dx, dz) - state.yaw;
+  while (rel > Math.PI) rel -= 2 * Math.PI; while (rel < -Math.PI) rel += 2 * Math.PI;
+  const pan = Math.max(-1, Math.min(1, Math.sin(rel)));
+  for (let i = 0; i < 4; i++) chime(988 - i * 30, vol, i * 0.4, pan);
+}
+function chime(freq, vol, delay, pan) {
+  const o = actx.createOscillator(), g = actx.createGain();
+  o.type = "sine"; o.frequency.value = freq;
+  const t = actx.currentTime + delay;
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(vol, t + 0.02);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 1.4);
+  let out = g;
+  if (actx.createStereoPanner) { const sp = actx.createStereoPanner(); sp.pan.value = pan; g.connect(sp); out = sp; }
+  o.connect(g); out.connect(actx.destination); o.start(t); o.stop(t + 1.5);
+}
+function scratch() { tone("sawtooth", 220, 130, 0.12, 0.3); }
+
+// ---- the ghost writing book (placeable item) ----
+function buildBookMesh() {
+  bookMesh = new THREE.Group();
+  const cover = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.03, 0.27),
+    new THREE.MeshStandardMaterial({ color: 0x2a1c10, roughness: 0.75 }));
+  const pages = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.025, 0.23),
+    new THREE.MeshStandardMaterial({ color: 0xd9c9a5, roughness: 0.9, emissive: 0x000000 }));
+  pages.position.y = 0.025; bookMesh.add(cover); bookMesh.add(pages);
+  bookMesh.userData.pages = pages.material; scene.add(bookMesh);
+}
+function bookGlow(on) { if (bookMesh) bookMesh.userData.pages.emissive.setHex(on ? 0x2f6a3a : 0x000000); }
+function placeBook() {
+  const p = camera.position;
+  state.bookPlaced = true; state.bookText = null; state.bookPos = { x: p.x, z: p.z };
+  if (!bookMesh) buildBookMesh();
+  bookMesh.position.set(p.x, 0.06, p.z); bookMesh.visible = true; bookGlow(false);
+  showToast("Writing book placed. Use ASK to question the spirit, then read it.");
+}
+function writeInBook(text) {
+  state.bookText = text; bookGlow(true); scratch();
+  state.evidence.ghostwriting = true;   // a written reply is itself the evidence — logs Ghost Writing
+  showToast("The pages stir — something was written. Ghost Writing logged.");
+}
+function readBook() {
+  document.getElementById("book-page").textContent = state.bookText || "The pages are blank.";
+  document.getElementById("bookmodal").classList.add("show"); bookOpen = true; unlockPointer();
+}
+function closeBookModal() { document.getElementById("bookmodal").classList.remove("show"); bookOpen = false; if (state.running && !state.dead && !state.won && !seanceOpen) lockPointer(); }
+function pickUpBook() {
+  state.bookPlaced = false; state.bookPending = false; if (bookMesh) bookMesh.visible = false;
+  closeBookModal(); showToast("You pick up the writing book.");
+}
+function buyBook() {
+  if (state.hasBook) return;
+  const cost = 60;
+  if (profile.cash < cost) { showToast("Not enough cash for the writing book ($60)."); return; }
+  profile.cash -= cost; persistProfile();
+  state.hasBook = true;
+  const b = document.getElementById("buy-book"); if (b) { b.textContent = "OWNED"; b.classList.add("owned"); }
+  showToast("Ghost writing book acquired — cycle tools to BOOK, then Act to place it.");
+}
+
+// ============================================================
+//  Physics
+// ============================================================
+function resolve(pos, r) {
+  for (let it = 0; it < 2; it++) {
+    for (const b of BOXES) {
+      const cx = Math.max(b.minX, Math.min(pos.x, b.maxX));
+      const cz = Math.max(b.minZ, Math.min(pos.z, b.maxZ));
+      const dx = pos.x - cx, dz = pos.z - cz, d = Math.hypot(dx, dz);
+      if (d < r) {
+        if (d > 1e-4) { pos.x += (dx / d) * (r - d); pos.z += (dz / d) * (r - d); }
+        else {
+          const l = pos.x - b.minX, rr = b.maxX - pos.x, u = pos.z - b.minZ, dn = b.maxZ - pos.z;
+          const m = Math.min(l, rr, u, dn);
+          if (m === l) pos.x = b.minX - r; else if (m === rr) pos.x = b.maxX + r;
+          else if (m === u) pos.z = b.minZ - r; else pos.z = b.maxZ + r;
+        }
+      }
+    }
+  }
+}
+
+function hasLOS(ax, az, bx, bz) {
+  const dx = bx - ax, dz = bz - az, dist = Math.hypot(dx, dz);
+  if (dist > CFG.sightRange) return false;
+  const steps = Math.ceil(dist / 0.35);
+  for (let i = 1; i < steps; i++) {
+    const x = ax + dx * (i / steps), z = az + dz * (i / steps);
+    for (const b of BOXES) { if (!b.los) continue; if (x > b.minX && x < b.maxX && z > b.minZ && z < b.maxZ) return false; }
+  }
+  return true;
+}
+
+// ============================================================
+//  Loop
+// ============================================================
+function animate() {
+  requestAnimationFrame(animate);
+  if (state._err) return;
+  try { frame(); }
+  catch (e) { state._err = 1; unlockPointer(); showFatal("Runtime error:\n" + ((e && (e.stack || e.message)) || String(e))); }
+}
+
+function frame() {
+  const dt = Math.min(clock.getDelta(), 0.05);
+  const active = state.running && !state.paused && !state.dead && !state.won && !journalOpen && !shopOpen && !seanceOpen && !bookOpen;
+  if (active) {
+    updatePlayer(dt);
+    if (state.investigating) { updateGhost(dt); updateSanity(dt); updateHunt(dt); updateEvents(dt); updateHouseLights(); }
+    updateTools(dt);
+    updateInteriorDoors(dt);
+    computeInteract();
+    state.time += dt;
+  }
+  camera.rotation.y = state.yaw; camera.rotation.x = state.pitch;
+
+  const hunting = state.huntEndsAt > state.time;
+  flashlight.color.setHex(uvActive ? 0x6a7cff : 0xfff2d6);
+  if (uvActive) { flashlight.visible = true; flashlight.intensity = 1.6; }
+  else { flashlight.visible = state.flashlightOn; flashlight.intensity = hunting ? (Math.random() > 0.5 ? 2.4 : 0.15) : 2.4; }
+  eventLight.intensity = state.time < state.eventFlashUntil ? (0.6 + Math.random() * 0.9) : eventLight.intensity * 0.85;
+
+  updateHUD();
+  renderer.render(scene, camera);
+}
+
+function updatePlayer(dt) {
+  if (state.hidden) return;
+  let mx = (keys["KeyD"] ? 1 : 0) - (keys["KeyA"] ? 1 : 0) + (joy.id !== null ? joy.dx : 0);
+  let mz = (keys["KeyW"] ? 1 : 0) - (keys["KeyS"] ? 1 : 0) + (joy.id !== null ? -joy.dy : 0);
+  mx = Math.max(-1, Math.min(1, mx)); mz = Math.max(-1, Math.min(1, mz));
+  const y = state.yaw;
+  const fwd = { x: -Math.sin(y), z: -Math.cos(y) }, right = { x: Math.cos(y), z: -Math.sin(y) };
+  let ix = fwd.x * mz + right.x * mx, iz = fwd.z * mz + right.z * mx;
+  const len = Math.hypot(ix, iz); if (len > 0) { ix /= len; iz /= len; }
+
+  const joyMag = Math.hypot(joy.dx, joy.dy);
+  const wantSprint = (keys["ShiftLeft"] || joyMag > 0.92) && len > 0 && state.stamina > 1;
+  const speed = wantSprint ? CFG.sprint : CFG.walk;
+  if (wantSprint) state.stamina = Math.max(0, state.stamina - CFG.staminaDrain * dt);
+  else state.stamina = Math.min(CFG.staminaMax, state.stamina + CFG.staminaRegen * dt);
+
+  const p = { x: camera.position.x + ix * speed * dt, z: camera.position.z + iz * speed * dt };
+  resolve(p, CFG.radius);
+  camera.position.x = p.x; camera.position.z = p.z;
+  camera.position.y = CFG.eye + Math.sin(state.time * 9) * (len > 0 ? 0.03 : 0) * (wantSprint ? 1.6 : 1);
+}
+
+function updateGhost(dt) {
+  const p = camera.position, hunting = state.huntEndsAt > state.time;
+  const inside = p.z < 11.9;   // the fenced yard (and the car) is a safe haven — the haunt won't harm you there
+  if (hunting) {
+    const seen = !state.hidden && inside && hasLOS(ghost.position.x, ghost.position.z, p.x, p.z);
+    let tgt = seen ? { x: p.x, z: p.z } : state.roamTarget;
+    if (seen) state.roamTarget = tgt;
+    tgt = { x: tgt.x, z: Math.min(tgt.z, 10.5) };   // it stalks to the doorway but never spills into the yard
+    stepGhost(tgt, CFG.ghostHuntSpeed, dt);
+    if (inside && !state.hidden && dist2(ghost.position.x, ghost.position.z, p.x, p.z) < CFG.catchRadius) die();
+    ghostMat.emissiveIntensity = 0.8 + Math.sin(state.time * 8) * 0.3;
+  } else {
+    // roam room-to-room; dwell a moment on arrival
+    if (dist2(ghost.position.x, ghost.position.z, state.roamTarget.x, state.roamTarget.z) < 0.5) {
+      state.dwell -= dt;
+      if (state.dwell <= 0) { pickRoom(); state.dwell = 1.5 + Math.random() * 3; }
+    } else stepGhost(state.roamTarget, CFG.ghostRoam, dt);
+  }
+}
+
+function pickRoom() {
+  const pool = [];
+  for (const r of ROOMS) { const w = (r === homeRoom) ? 3 : 1; for (let i = 0; i < w; i++) pool.push(r); }
+  const r = pool[(Math.random() * pool.length) | 0];
+  state.roamTarget = { x: r.x + (Math.random() - 0.5) * 3, z: r.z + (Math.random() - 0.5) * 3 };
+}
+
+function stepGhost(tgt, speed, dt) {
+  const dx = tgt.x - ghost.position.x, dz = tgt.z - ghost.position.z, d = Math.hypot(dx, dz);
+  if (d > 0.05) {
+    const np = { x: ghost.position.x + (dx / d) * speed * dt, z: ghost.position.z + (dz / d) * speed * dt };
+    resolve(np, 0.3); ghost.position.x = np.x; ghost.position.z = np.z;
+    ghost.rotation.y = Math.atan2(dx, dz);
+  }
+}
+
+function updateInteriorDoors(dt) {
+  const px = camera.position.x, pz = camera.position.z;
+  for (const d of INT_DOORS) {
+    d.target = dist2(px, pz, d.cx, d.cz) < 2.3 ? d.openAngle : 0;
+    d.cur += (d.target - d.cur) * Math.min(1, dt * 5);
+    d.hinge.rotation.y = d.cur;
+  }
+}
+
+function updateEvents(dt) {
+  if (state.huntEndsAt > state.time) return;
+  if (state.time < state.nextEvent) return;
+  state.nextEvent = state.time + 8 + Math.random() * 10;
+  eventLight.position.set(ghost.position.x, 2.3, ghost.position.z);
+  state.eventFlashUntil = state.time + 0.9;
+  state.emfBoostUntil = state.time + 4;
+  knock();
+  showToast("Something stirs deeper in the house…");
+}
+
+function updateSanity(dt) {
+  if (state.hidden) return;
+  let drain = CFG.sanityDarkDrain;
+  if (state.flashlightOn && !uvActive) drain *= CFG.sanityFlashlightMul;
+  if (dist2(camera.position.x, camera.position.z, ghost.position.x, ghost.position.z) < 6) drain *= CFG.sanityNearGhostMul;
+  drain *= DIFFICULTIES[state.difficulty].sanityDrainMul;
+  state.sanity = Math.max(0, state.sanity - drain * dt);
+}
+
+function updateHunt(dt) {
+  const now = state.time;
+  const hunting = state.huntEndsAt > now;
+  const gv = document.getElementById("hunt-vignette");
+  if (hunting) { ghost.visible = true; gv.style.opacity = 0.55 + Math.sin(now * 10) * 0.15; beat(); return; }
+  ghost.visible = false; gv.style.opacity = 0;
+
+  // a hunt is scheduled: run the flicker warning, then let it manifest
+  if (state.pendingHunt) {
+    if (now >= state.huntWarnUntil) { state.pendingHunt = false; beginHunt(); }
+    return;
+  }
+
+  if (now < state.nextHuntAllowed) return;
+  if (now - state.lastHuntCheck < CFG.huntCheckEvery) return;
+  state.lastHuntCheck = now;
+  const thresh = DIFFICULTIES[state.difficulty].huntThresh;
+  if (state.sanity < thresh && Math.random() < 0.12 + (thresh - state.sanity) / 130) scheduleHunt();
+}
+
+// the lights stutter and the house goes cold — a beat before the spirit shows itself
+function scheduleHunt() {
+  state.pendingHunt = true;
+  state.huntWarnUntil = state.time + CFG.huntWarn;
+  state.flickerUntil = state.huntWarnUntil;
+  state.roamTarget = { x: camera.position.x, z: camera.position.z };
+  knock();
+  showToast("The lights stutter — something is coming.");
+}
+
+function beginHunt() {
+  state.huntEndsAt = state.time + CFG.huntDuration;
+  state.nextHuntAllowed = state.time + CFG.huntDuration + CFG.huntCooldown;
+  state.flickerUntil = state.huntEndsAt;   // keep the house lights unstable through the hunt
+  state.roamTarget = { x: camera.position.x, z: camera.position.z };
+  screech();
+}
+
+// flicker the ceiling lights during the warning and the hunt; otherwise hold each room's switch state
+function updateHouseLights() {
+  const now = state.time;
+  const unstable = now < state.flickerUntil || state.huntEndsAt > now;
+  for (const h of houseLights) {
+    if (unstable) {
+      const lit = Math.random() > 0.5;
+      const cap = h.on ? h.base : h.base * 0.35;   // an off room only sparks faintly
+      h.light.intensity = lit ? cap * (0.5 + Math.random() * 0.6) : 0;
+      if (h.bulb) h.bulb.material.color.setHex(lit ? 0xffe6b0 : 0x140d05);
+      if (h.shade) h.shade.material.emissiveIntensity = lit ? 0.45 : 0.02;
+    } else {
+      const target = h.on ? h.base : 0;
+      h.light.intensity += (target - h.light.intensity) * 0.25;
+      if (h.bulb) h.bulb.material.color.setHex(h.on ? 0xffe6b0 : 0x140d05);
+      if (h.shade) h.shade.material.emissiveIntensity = h.on ? 0.5 : 0.02;
+    }
+  }
+}
+
+function updateTools(dt) {
+  const gx = ghost.position.x, gz = ghost.position.z, px = camera.position.x, pz = camera.position.z;
+  const dg = dist2(px, pz, gx, gz), hunting = state.huntEndsAt > state.time;
+  const boosted = state.time < state.emfBoostUntil;
+  const has = (e) => state.ghostType.ev.includes(e);
+
+  if (state.tool === 1 && state.investigating) {
+    let target = 1;
+    if (dg < CFG.emfRadius || boosted) {
+      target = 2 + ((Math.random() * 2) | 0);
+      if (has("emf5") && Math.random() < 0.07) { target = 5; state.evidence.emf5 = true; }
+    }
+    if (hunting) target = 2 + ((Math.random() * 4) | 0);
+    if (Math.random() < 0.25) { state.emfReading = target; if (target >= 3) blip(target); }
+  }
+  if (state.tool === 2 && state.investigating) {
+    const cold = Math.max(0, 1 - dist2(px, pz, GHOST_HOME.x, GHOST_HOME.z) / CFG.coldRadius);
+    const floor = has("freezing") ? -5 : 3;
+    const t = 12 - (12 - floor) * cold;
+    state.temp += (t - state.temp) * Math.min(1, dt * 1.5);
+    if (state.temp < 0) state.evidence.freezing = true;
+  } else state.temp += (12 - state.temp) * Math.min(1, dt * 0.5);
+
+  if (uvActive && state.investigating) {
+    const near = dist2(px, pz, -2.3, -3.9) < 6.0;   // UV reveal range — prints show from up to 6m while scanning with UV
+    if (near && has("fingerprints")) { handprints.opacity = Math.min(1, handprints.opacity + dt * 3.5); state.evidence.fingerprints = true; }
+    else if (!near) handprints.opacity = Math.max(0, handprints.opacity - dt * 1.2);
+  } else handprints.opacity = Math.max(0, handprints.opacity - dt * 1.2);
+}
+
+function die() {
+  if (state.dead) return;
+  state.dead = true; unlockPointer(); screech();
+  awardContract(false, false);
+  const nm = document.getElementById("death-name");
+  if (nm) nm.textContent = state.ghostName + " took you — it was a " + state.ghostType.name + ".";
+  const rw = document.getElementById("death-reward");
+  if (rw) rw.innerHTML = rewardHTML();
+  updateProfileUI();
+  show("death");
+}
+
+// ============================================================
+//  HUD / toast
+// ============================================================
+let toastUntil = 0;
+function showToast(msg) {
+  const el = document.getElementById("toast"); el.textContent = msg; el.style.opacity = 1; toastUntil = state.time + 3.5;
+}
+function updateHUD() {
+  const sb = document.getElementById("sanity-bar");
+  sb.style.width = state.sanity + "%";
+  sb.style.background = state.sanity < 25 ? "#e0574e" : state.sanity < 55 ? "#e0a94e" : "#4ea0e0";
+  document.getElementById("sanity-val").textContent = Math.round(state.sanity) + "%";
+  document.getElementById("stamina-bar").style.width = state.stamina + "%";
+
+  const emf = document.getElementById("emf-bars");
+  for (let i = 0; i < 5; i++) emf.children[i].className = "emf-cell" + (i < state.emfReading ? " on l" + (i + 1) : "");
+  const tv = document.getElementById("temp-val");
+  tv.textContent = state.temp.toFixed(1) + "°C"; tv.style.color = state.temp < 0 ? "#7fd0ff" : "#cfd6dd";
+
+  document.getElementById("hunt-banner").style.opacity = state.huntEndsAt > state.time ? 1 : 0;
+  if (toastUntil && state.time > toastUntil) { document.getElementById("toast").style.opacity = 0; toastUntil = 0; }
+  document.getElementById("clock").textContent = state.investigating ? "INVESTIGATION ACTIVE" : "AT THE GATE";
+}
+
+// ============================================================
+//  Journal
+// ============================================================
+function toggleJournal() {
+  journalOpen = !journalOpen;
+  const el = document.getElementById("journal");
+  if (journalOpen) { unlockPointer(); renderJournal(); el.style.display = "flex"; }
+  else { el.style.display = "none"; if (!state.dead && !state.won && !shopOpen) lockPointer(); }
+}
+function renderJournal() {
+  const ev = document.getElementById("evidence-list"); ev.innerHTML = "";
+  for (const k of ["emf5", "freezing", "fingerprints", "ghostwriting"]) {
+    const found = state.evidence[k];
+    const d = document.createElement("div");
+    d.className = "ev-row" + (found ? " found" : "");
+    d.innerHTML = `<span class="chk">${found ? "✓" : "○"}</span>${EV_LABEL[k]}`;
+    ev.appendChild(d);
+  }
+  const foundSet = Object.keys(state.evidence).filter(k => state.evidence[k]);
+  const list = document.getElementById("ghost-list"); list.innerHTML = "";
+  for (const g of GHOSTS) {
+    const possible = foundSet.every(e => g.ev.includes(e));
+    const row = document.createElement("div");
+    row.className = "ghost-row" + (possible ? "" : " ruled-out") + (state.guess === g ? " chosen" : "");
+    row.innerHTML = `<span class="gname">${g.name}</span><span class="gev">${g.ev.map(e => EV_LABEL[e]).join(" · ")}</span>`;
+    row.onclick = () => { state.guess = g; renderJournal(); };
+    list.appendChild(row);
+  }
+  document.getElementById("guess-status").textContent =
+    state.guess ? "Suspecting: " + state.guess.name + " — return to the car outside to conclude." : "Tap a ghost to record your suspicion.";
+}
+
+// ============================================================
+//  Progression · profile persistence · tamper-evident saves
+// ============================================================
+const SAVE_KEY = "phantom-manor-profile";
+const SAVE_SALT = "pm::b7Q9x2$Lk8mZ";   // salts the signature so edited files are caught
+
+// small non-crypto hash (works over plain http on the Pi, where crypto.subtle is absent)
+function cyrb53(str, seed) {
+  let h1 = 0xdeadbeef ^ seed, h2 = 0x41c6ce57 ^ seed;
+  for (let i = 0, ch; i < str.length; i++) {
+    ch = str.charCodeAt(i);
+    h1 = Math.imul(h1 ^ ch, 2654435761);
+    h2 = Math.imul(h2 ^ ch, 1597334677);
+  }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(16).padStart(14, "0");
+}
+function signProfile(p) { return cyrb53(p.cash + "|" + p.exp + "|" + p.level + "|" + SAVE_SALT, 0x9e3779b9); }
+
+// XP curve: each level costs ~35% more than the last, starting at 150
+function levelInfo(exp) {
+  let level = 1, need = 150, floor = 0;
+  while (exp >= floor + need) { floor += need; level++; need = Math.round(need * 1.35); }
+  return { level, into: exp - floor, need };
+}
+
+function loadProfile() {
+  try {
+    const raw = localStorage.getItem(SAVE_KEY); if (!raw) return;
+    const p = JSON.parse(raw);
+    if (p && signProfile(p) === p.sig) {
+      profile.cash = p.cash | 0; profile.exp = p.exp | 0; profile.level = levelInfo(profile.exp).level;
+    }
+  } catch (e) {}
+}
+function persistProfile() {
+  profile.level = levelInfo(profile.exp).level;
+  const p = { cash: profile.cash, exp: profile.exp, level: profile.level };
+  p.sig = signProfile(p);
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify(p)); } catch (e) {}
+  updateProfileUI();
+}
+
+function awardContract(correct, survived) {
+  const dm = DIFFICULTIES[state.difficulty].rewardMul;
+  let exp, cash;
+  if (!survived) { exp = Math.round(PAYOUT.expDeath * dm); cash = 0; }
+  else {
+    exp = Math.round((PAYOUT.expBase + (correct ? PAYOUT.expCorrect : 0)) * dm);
+    cash = Math.round((PAYOUT.cashBase + (correct ? PAYOUT.cashCorrect : 0)) * dm);
+  }
+  const before = levelInfo(profile.exp).level;
+  profile.exp += exp; profile.cash += cash;
+  const after = levelInfo(profile.exp).level;
+  lastReward = { exp, cash, correct, survived, levelUp: after > before, level: after };
+  persistProfile();
+}
+
+function rewardHTML() {
+  if (!lastReward) return "";
+  const r = lastReward;
+  let s = '<span class="rw rw-exp">+' + r.exp + ' EXP</span>';
+  if (r.cash > 0) s += '<span class="rw rw-cash">+$' + r.cash + '</span>';
+  if (r.levelUp) s += '<span class="rw rw-level">LEVEL ' + r.level + '</span>';
+  return s;
+}
+
+function updateProfileUI() {
+  const info = levelInfo(profile.exp);
+  document.querySelectorAll("[data-cash]").forEach(e => e.textContent = "$" + profile.cash.toLocaleString());
+  document.querySelectorAll("[data-level]").forEach(e => e.textContent = info.level);
+  document.querySelectorAll("[data-exp]").forEach(e => e.textContent = profile.exp.toLocaleString());
+  document.querySelectorAll("[data-xpbar]").forEach(e => e.style.width = Math.round(100 * info.into / info.need) + "%");
+}
+
+// Save downloads a signed JSON; Load imports and verifies it. Edited files are rejected.
+function exportSave() {
+  persistProfile();
+  const info = levelInfo(profile.exp);
+  const data = { game: "Phantom Manor", version: 1, cash: profile.cash, exp: profile.exp, level: info.level };
+  data.sig = signProfile(data);
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = "phantom-manor-save.json"; document.body.appendChild(a); a.click();
+  a.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+  showToast("Progress saved to phantom-manor-save.json");
+}
+function importSave(file) {
+  if (!file) return;
+  const r = new FileReader();
+  r.onload = () => {
+    try {
+      const p = JSON.parse(r.result);
+      const ok = p && typeof p.sig === "string" &&
+        signProfile({ cash: p.cash, exp: p.exp, level: p.level }) === p.sig;
+      if (!ok) { showToast("Save rejected — the file has been altered."); return; }
+      profile.cash = p.cash | 0; profile.exp = p.exp | 0;
+      persistProfile();
+      showToast("Progress loaded — level " + levelInfo(profile.exp).level + ".");
+    } catch (e) { showToast("That doesn't look like a Phantom Manor save."); }
+  };
+  r.readAsText(file);
+}
+
+// ============================================================
+//  Audio
+// ============================================================
+let actx, lastBeat = 0;
+function initAudio() {
+  actx = new (window.AudioContext || window.webkitAudioContext)();
+  const o1 = actx.createOscillator(), o2 = actx.createOscillator(), g = actx.createGain();
+  o1.frequency.value = 44; o2.frequency.value = 44.4; o1.type = o2.type = "sine";
+  g.gain.value = 0.05; o1.connect(g); o2.connect(g); g.connect(actx.destination); o1.start(); o2.start();
+}
+function tone(type, f0, f1, peak, dur) {
+  if (!actx) return;
+  const o = actx.createOscillator(), g = actx.createGain();
+  o.type = type; o.frequency.setValueAtTime(f0, actx.currentTime);
+  if (f1 !== f0) o.frequency.exponentialRampToValueAtTime(f1, actx.currentTime + dur);
+  g.gain.setValueAtTime(0.0001, actx.currentTime);
+  g.gain.exponentialRampToValueAtTime(peak, actx.currentTime + 0.02);
+  g.gain.exponentialRampToValueAtTime(0.0001, actx.currentTime + dur);
+  o.connect(g); g.connect(actx.destination); o.start(); o.stop(actx.currentTime + dur + 0.02);
+}
+function blip(level) { tone("square", 300 + level * 120, 300 + level * 120, 0.08, 0.08); }
+function knock() { tone("sine", 120, 60, 0.35, 0.25); }
+function screech() { tone("sawtooth", 880, 120, 0.25, 0.6); }
+function beat() { if (state.time - lastBeat < 0.62) return; lastBeat = state.time; tone("sine", 70, 40, 0.5, 0.3); }
+
+// ============================================================
+//  Screens / boot
+// ============================================================
+function show(which) { document.querySelectorAll(".overlay").forEach(o => o.classList.remove("visible")); const el = document.getElementById(which); if (el) el.classList.add("visible"); }
+function hideOverlays() { document.querySelectorAll(".overlay").forEach(o => o.classList.remove("visible")); }
+
+function startGame() {
+  if (!actx) initAudio(); else if (actx.state === "suspended") actx.resume();
+  state.running = true; state.paused = false; hideOverlays(); lockPointer();
+  showToast("Head to the front door and let yourself in.");
+}
+function resumeGame() { state.paused = false; hideOverlays(); lockPointer(); }
+function pauseGame() { if (!state.running || state.dead || state.won || journalOpen || shopOpen || seanceOpen || bookOpen) return; state.paused = true; unlockPointer(); show("pause"); }
+
+function onResize() { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); }
+
+function showFatal(msg) {
+  state.running = false;
+  let el = document.getElementById("fatal");
+  if (!el) {
+    el = document.createElement("div"); el.id = "fatal";
+    el.style.cssText = "position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:30px;background:rgba(2,3,5,.97);color:#e0574e;font-family:monospace;font-size:13px;line-height:1.6;white-space:pre-wrap;text-align:center";
+    document.body.appendChild(el);
+  }
+  el.textContent = "\u26A0  " + msg;
+}
+function guard(fn) { return function () { try { return fn.apply(this, arguments); } catch (e) { showFatal("Error:\n" + ((e && (e.stack || e.message)) || String(e))); } }; }
+window.startGame = guard(startGame);
+window.resumeGame = guard(resumeGame);
+window.restartGame = () => location.reload();
+
+function injectScript(src) {
+  return new Promise((res, rej) => {
+    const s = document.createElement("script"); s.src = src; s.crossOrigin = "anonymous";
+    s.onload = () => (typeof THREE !== "undefined" ? res(src) : rej(new Error("loaded, no THREE")));
+    s.onerror = () => rej(new Error("blocked/404: " + src));
+    document.head.appendChild(s);
+  });
+}
+async function loadEngine() {
+  const urls = [
+    "./three.min.js", "three.min.js",
+    "https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js",
+    "https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js",
+    "https://unpkg.com/three@0.128.0/build/three.min.js",
+  ];
+  let last;
+  for (const u of urls) { if (typeof THREE !== "undefined") return; try { return await injectScript(u); } catch (e) { last = e; } }
+  throw last || new Error("no engine source");
+}
+function pickHaunt() {
+  state.ghostType = GHOSTS[(Math.random() * GHOSTS.length) | 0];
+  state.ghostName = GHOST_FIRST[(Math.random() * GHOST_FIRST.length) | 0]
+    + " " + GHOST_LAST[(Math.random() * GHOST_LAST.length) | 0];
+  state.ghostAge = 7 + ((Math.random() * 80) | 0);
+  state.ghostDeath = DEATHS[(Math.random() * DEATHS.length) | 0];
+  const t = state.ghostType.name;
+  state.ghostFriendly = (t === "Demon" || t === "Banshee") ? false : Math.random() < 0.55;
+  state.ghostWrites = state.ghostType.ev.includes("ghostwriting");   // only certain spirits write in the book
+  state.signChance = 0.45 + Math.random() * 0.35;
+}
+
+// three.js is fetched quietly while the player reads the menu, so the scene isn't built up-front
+let engineReady = false, engineErr = null, entering = false;
+function preloadEngine() {
+  if (typeof THREE !== "undefined") { engineReady = true; return; }
+  loadEngine().then(() => { engineReady = true; }).catch((e) => { engineErr = e; });
+}
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+const nextFrame = () => new Promise((r) => requestAnimationFrame(() => r()));
+function setLoad(frac, status) {
+  const f = document.getElementById("load-fill"); if (f) f.style.width = Math.round(frac * 100) + "%";
+  if (status) { const s = document.getElementById("load-status"); if (s) s.textContent = status; }
+}
+
+// the loading screen: names the haunt, builds the scene, warms the GPU, then counts down
+async function enterInvestigation() {
+  if (entering || state.running) return; entering = true;
+  if (!actx) initAudio(); else if (actx.state === "suspended") actx.resume(); // wake audio in the gesture
+
+  pickHaunt();
+  const nm = document.getElementById("load-name"); if (nm) nm.textContent = state.ghostName;
+  hideOverlays();
+  const load = document.getElementById("loading"); load.classList.add("show");
+  document.getElementById("load-count").textContent = "";
+  setLoad(0.06, "Loading engine…");
+
+  const t0 = performance.now();
+  while (!engineReady) {
+    if (engineErr) { load.classList.remove("show"); showFatal("Couldn't load the 3D engine (three.js).\nFor an offline Pi, drop three.min.js next to this file.\n\ndetail: " + engineErr.message); entering = false; return; }
+    if (performance.now() - t0 > 20000) { load.classList.remove("show"); showFatal("The 3D engine took too long to load."); entering = false; return; }
+    await wait(80);
+  }
+
+  setLoad(0.4, "Building the manor…"); await wait(40);
+  try { init(); } catch (e) { load.classList.remove("show"); showFatal("Startup error:\n" + ((e && (e.stack || e.message)) || String(e))); entering = false; return; }
+
+  setLoad(0.7, "Waking the house…");
+  for (let i = 0; i < 3; i++) { try { renderer.render(scene, camera); } catch (e) {} await nextFrame(); } // compile shaders behind the curtain
+
+  const total = 4;                       // countdown so everything settles before drop-in
+  for (let s = total; s > 0; s--) {
+    document.getElementById("load-count").textContent = "Entering in " + s + "…";
+    setLoad(0.7 + 0.3 * (1 - (s - 1) / total), "Initialising game state…");
+    await wait(1000);
+  }
+  setLoad(1, "Ready");
+  load.classList.remove("show");
+  startGame();
+  entering = false;
+}
+window.enterInvestigation = guard(enterInvestigation);
+
+function boot() {
+  try { setupMenu(); } catch (e) { showFatal("Menu error:\n" + ((e && (e.stack || e.message)) || String(e))); }
+  preloadEngine();
+}
+if (document.readyState === "loading") addEventListener("DOMContentLoaded", boot); else boot();
+  </script>
+</body>
+</html>
