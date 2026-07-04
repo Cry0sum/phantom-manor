@@ -134,7 +134,7 @@
   /* journal (scrollable) */
   #journal{position:fixed;inset:0;z-index:25;display:none;align-items:center;justify-content:center;padding:20px;
     background:radial-gradient(circle at 50% 30%,rgba(9,13,19,.94),rgba(2,3,5,.98))}
-  .book{width:min(680px,94vw);max-height:88vh;display:flex;flex-direction:column;
+  .book{width:min(680px,94vw);max-height:88vh;max-height:calc(100dvh - 44px);display:flex;flex-direction:column;
     border:1px solid var(--line);background:var(--panel);padding:20px 22px}
   .book h2{font-size:13px;letter-spacing:.3em;color:var(--cyan);text-transform:uppercase;margin:0 0 12px}
   .jscroll{overflow-y:auto;-webkit-overflow-scrolling:touch;padding-right:6px;flex:1;min-height:0}
@@ -160,7 +160,7 @@
   /* shop modal */
   #shop{position:fixed;inset:0;z-index:25;display:none;align-items:center;justify-content:center;padding:22px;
     background:rgba(2,3,5,.9)}
-  .shop-box{width:min(460px,92vw);max-height:86vh;display:flex;flex-direction:column;
+  .shop-box{width:min(460px,92vw);max-height:86vh;max-height:calc(100dvh - 44px);display:flex;flex-direction:column;
     border:1px solid var(--line);background:var(--panel);padding:22px}
   .shop-box h2{font-size:14px;letter-spacing:.3em;color:var(--amber);text-transform:uppercase;text-align:center}
   .shop-sub{margin:8px 0 14px;font-size:11px;color:var(--dim);text-align:center;font-style:italic}
@@ -173,14 +173,16 @@
     font-family:var(--mono,monospace);font-size:11px;letter-spacing:.1em;padding:5px 12px;border-radius:12px;transition:.15s}
   .si-buy:hover{background:var(--amber);color:#100b04}
   .si-buy.owned{border-color:var(--green);color:var(--green);pointer-events:none}
-  .shop-cash{margin-top:12px;text-align:center;font-size:11px;letter-spacing:.12em;color:var(--dim);text-transform:uppercase}
+  .si-buy.pending{border-color:var(--ice);color:var(--ice);pointer-events:none}
+  .shop-note{margin-top:12px;font-size:10px;line-height:1.55;color:var(--dim);text-align:center;letter-spacing:.03em}
+  .shop-cash{margin-top:10px;text-align:center;font-size:11px;letter-spacing:.12em;color:var(--dim);text-transform:uppercase}
   .shop-cash b{color:var(--amber)}
 
   /* séance / speech panel */
   #seance{position:fixed;inset:0;z-index:26;display:none;align-items:center;justify-content:center;padding:22px;
     background:radial-gradient(circle at 50% 40%,rgba(10,14,20,.9),rgba(2,3,5,.97))}
   #seance.show{display:flex}
-  .seance-box{width:min(440px,92vw);max-height:86vh;display:flex;flex-direction:column;
+  .seance-box{width:min(440px,92vw);max-height:86vh;max-height:calc(100dvh - 44px);display:flex;flex-direction:column;
     background:#080b11;border:1px solid var(--line);border-radius:6px;padding:20px}
   .seance-box h2{font-size:14px;letter-spacing:.3em;color:var(--ice);text-transform:uppercase;text-align:center}
   .seance-sub{margin:8px 0 14px;font-size:11px;color:var(--dim);text-align:center;line-height:1.5}
@@ -201,11 +203,26 @@
   #bookmodal{position:fixed;inset:0;z-index:27;display:none;align-items:center;justify-content:center;padding:22px;
     background:rgba(2,3,5,.9)}
   #bookmodal.show{display:flex}
-  .book-box{width:min(420px,92vw);background:#0c0e13;border:1px solid var(--line);border-radius:6px;padding:22px;text-align:center}
-  .book-box h2{font-size:13px;letter-spacing:.3em;color:var(--amber);text-transform:uppercase}
-  .book-page{margin:16px 0;min-height:70px;display:flex;align-items:center;justify-content:center;
-    background:#d9c9a5;color:#241708;font-family:Georgia,'Times New Roman',serif;font-size:20px;
-    padding:22px;border-radius:3px;line-height:1.4}
+  .book-box{width:min(420px,92vw);display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center}
+  .book-title{font-size:13px;letter-spacing:.3em;color:var(--amber);text-transform:uppercase}
+  /* the page itself is aged paper, borrowed from echo's note card */
+  .book-page{position:relative;width:min(300px,78vw);aspect-ratio:3/4;background:#efe9db;
+    border-radius:5px;transform:rotate(-1.6deg);overflow:hidden;
+    box-shadow:0 16px 54px rgba(0,0,0,.8),inset 0 0 46px rgba(150,138,104,.5);
+    display:flex;align-items:center;justify-content:center;padding:26px}
+  .book-page::before{content:"";position:absolute;inset:0;border-radius:5px;pointer-events:none;
+    background:repeating-linear-gradient(0deg,transparent 0 27px,rgba(60,50,30,.10) 27px 28px)}
+  .book-page.empty{color:#8a7f66;font-family:Georgia,'Times New Roman',serif;font-style:italic;font-size:16px;letter-spacing:.04em}
+  .scrawl-text{position:relative;z-index:1;color:#2a0d08;line-height:1.5;
+    font-family:"Bradley Hand","Segoe Print","Comic Sans MS",cursive;
+    font-size:clamp(20px,6vw,30px);font-weight:700;word-break:break-word;text-shadow:0 1px 0 rgba(120,60,30,.15)}
+  .book-page.big .scrawl-text{font-size:clamp(52px,17vw,90px);letter-spacing:.12em}
+  .book-ink{position:relative;z-index:1;width:74%;height:74%;filter:drop-shadow(0 1px 1px rgba(90,20,10,.25))}
+  .book-flip{display:flex;align-items:center;gap:18px;min-height:20px}
+  .book-arrow{pointer-events:auto;cursor:pointer;background:transparent;border:1px solid var(--line);
+    color:var(--ice);border-radius:50%;width:38px;height:38px;font-size:13px;line-height:1;transition:.14s}
+  .book-arrow:hover{border-color:var(--cyan);color:#eaf6ff}
+  #book-nav{font-size:11px;letter-spacing:.18em;color:var(--dim);min-width:52px;text-transform:uppercase}
   .book-row{display:flex;gap:12px;justify-content:center}
 
   /* difficulty picker */
@@ -296,8 +313,8 @@
   <div id="stick"><div id="stickKnob"></div></div>
   <div id="interact"></div>
   <div id="btns">
-    <button class="rbtn" id="b-tool">LIGHT</button>
-    <button class="rbtn on" id="b-flash">TORCH</button>
+    <button class="rbtn" id="b-tool">TOOLS</button>
+    <button class="rbtn" id="b-flash">TORCH</button>
     <button class="rbtn" id="b-ask">ASK</button>
     <button class="rbtn" id="b-journal">LOG</button>
   </div>
@@ -318,8 +335,13 @@
   <!-- BOOK reader -->
   <div id="bookmodal">
     <div class="book-box">
-      <h2>Ghost Writing Book</h2>
-      <div class="book-page" id="book-page">The pages are blank.</div>
+      <div class="book-title">Ghost Writing Book</div>
+      <div class="book-page empty" id="book-page">The pages are blank.</div>
+      <div class="book-flip">
+        <button class="book-arrow" id="book-prev" aria-label="Previous page">&#9664;</button>
+        <div id="book-nav"></div>
+        <button class="book-arrow" id="book-next" aria-label="Next page">&#9654;</button>
+      </div>
       <div class="book-row">
         <button class="btn small" id="book-pickup">Pick up</button>
         <button class="btn small" id="book-closebtn">Close</button>
@@ -351,7 +373,7 @@
           <div class="ctrl-row"><b>Look</b><span>Drag screen · Mouse</span></div>
           <div class="ctrl-row"><b>Sprint</b><span>Push stick fully · Shift</span></div>
           <div class="ctrl-head">Gear</div>
-          <div class="ctrl-row"><b>Switch tool</b><span>LIGHT button · 1–5</span></div>
+          <div class="ctrl-row"><b>Switch tool</b><span>TOOLS button · 1–5</span></div>
           <div class="ctrl-row"><b>Torch</b><span>TORCH button · F</span></div>
           <div class="ctrl-row"><b>Interact / Act</b><span>Centre button · E</span></div>
           <div class="ctrl-row"><b>Journal</b><span>LOG button · J</span></div>
@@ -475,18 +497,13 @@
       <h2>Supplies</h2>
       <div class="shop-sub">The quartermaster's stall.</div>
       <div class="shop-scroll">
-        <div class="shop-item"><span class="si-name">EMF Reader</span><span class="si-tag">EQUIPPED</span></div>
-        <div class="shop-item"><span class="si-name">Thermometer</span><span class="si-tag">EQUIPPED</span></div>
-        <div class="shop-item"><span class="si-name">UV Light</span><span class="si-tag">EQUIPPED</span></div>
-        <div class="shop-item">
-          <span class="si-name">Ghost Writing Book</span>
-          <button class="si-buy" id="buy-book" data-cost="60">$60</button>
-        </div>
+        <div id="shop-items"></div>
         <div class="shop-item"><span class="si-name">Sanity Pills</span><span class="si-tag">SOON</span></div>
         <div class="shop-item"><span class="si-name">Spare Batteries</span><span class="si-tag">SOON</span></div>
         <div class="shop-item"><span class="si-name">Crucifix</span><span class="si-tag">SOON</span></div>
         <div class="shop-item"><span class="si-name">Motion Sensor</span><span class="si-tag">SOON</span></div>
       </div>
+      <div class="shop-note">Items you buy are yours for this run. Escape with them and they're kept for good — die and you'll have to buy them again.</div>
       <div class="shop-cash">Cash on hand: <b data-cash>$0</b></div>
       <div class="jclose" id="shop-close" style="margin-top:14px">Close</div>
     </div>
@@ -507,6 +524,10 @@ const CFG = {
   huntCooldown: 24, huntDuration: 18, huntWarn: 2.6,
   ghostRoam: 0.75, ghostHuntSpeed: 2.75, catchRadius: 1.35, sightRange: 34,
   emfRadius: 6, coldRadius: 7, interact: 2.4, hideRange: 1.9,
+  // Phasmophobia-style doors: the ghost has to push a closed door open. Reach is
+  // wider than its collision radius so it never wedges — it reaches the door and
+  // it swings. Open times are how long that push takes (roam vs hunt).
+  ghostDoorReach: 1.5, ghostDoorOpen: 0.7, ghostHuntDoorOpen: 0.28,
 };
 let GHOST_HOME = { x: -7, z: -7 };   // the ghost's favourite room — chosen fresh each investigation
 const ROOMS = [
@@ -521,17 +542,23 @@ let homeRoom = ROOMS[0];
 // A spirit "writes" if and only if "ghostwriting" is one of its evidence types.
 // Writing spirits answer book questions AND log Ghost Writing evidence when they do.
 const GHOSTS = [
-  { name: "Spirit",       ev: ["emf5", "fingerprints"] },
+  // --- Silent spirits: the ghost writing book never gets a page from these. ---
   { name: "Wraith",       ev: ["emf5", "freezing"] },
   { name: "Phantom",      ev: ["freezing", "fingerprints"] },
   { name: "Banshee",      ev: ["emf5", "freezing", "fingerprints"] },
   { name: "Yurei",        ev: ["freezing"] },
-  { name: "Demon",        ev: ["emf5"] },
-  { name: "Shade",        ev: ["fingerprints"] },
-  // spirits that communicate through the ghost writing book
-  { name: "Poltergeist",  ev: ["emf5", "ghostwriting"] },
-  { name: "Revenant",     ev: ["freezing", "ghostwriting"] },
-  { name: "Onryo",        ev: ["fingerprints", "ghostwriting"] },
+  // --- Writing spirits: mirror Phasmophobia's "Possible Ghosts" for Ghost
+  // Writing. This game only has four evidence types, so Phasmophobia's Spirit
+  // Box / Ghost Orb slots (which don't exist here) are dropped — the note after
+  // each line records the missing canon evidence. Every evidence combo below is
+  // still unique, so each ghost stays identifiable from the journal. ---
+  { name: "Spirit",       ev: ["ghostwriting", "emf5"] },                     // Phasmo also: Spirit Box
+  { name: "Poltergeist",  ev: ["ghostwriting", "fingerprints"] },            // Phasmo also: Spirit Box
+  { name: "Revenant",     ev: ["ghostwriting", "freezing"] },                // Phasmo also: Ghost Orb
+  { name: "Mare",         ev: ["ghostwriting"] },                            // Phasmo also: Ghost Orb, Spirit Box
+  { name: "Shade",        ev: ["ghostwriting", "emf5", "freezing"] },         // full match
+  { name: "Demon",        ev: ["ghostwriting", "fingerprints", "freezing"] }, // full match
+  { name: "Myling",       ev: ["ghostwriting", "emf5", "fingerprints"] },     // full match
 ];
 // eerie causes of death the spirit may write when it answers
 const DEATHS = ["a fall from the landing", "the winter fever", "the well behind the house",
@@ -604,9 +631,38 @@ const houseLights = [];      // ceiling fixtures we flicker before a manifestati
 const SWITCHES = [];         // wall-mounted light switches, one per room
 let woodTex = null;
 
-// persistent player profile (cash / exp / level). Level is derived from exp.
-const profile = { cash: 0, exp: 0, level: 1 };
+// ------------------------------------------------------------
+//  Equipment: every tool is a purchasable item. You keep an item
+//  permanently only once you BUY it and then ESCAPE with it. Die
+//  mid-run and any items bought that run (and not yet banked) are lost.
+//  Tune prices and the fresh-save grant here.
+// ------------------------------------------------------------
+const TOOL_DEFS = [
+  { key: "flashlight", label: "TORCH", cost: 40 },   // the handheld beam (TORCH button)
+  { key: "emf",        label: "EMF",   cost: 50 },
+  { key: "thermo",     label: "TEMP",  cost: 45 },
+  { key: "uv",         label: "UV",    cost: 50 },
+  { key: "book",       label: "BOOK",  cost: 60 },   // ghost writing book
+];
+const TOOL_COST = Object.fromEntries(TOOL_DEFS.map(t => [t.key, t.cost]));
+const TOOL_LABEL = Object.fromEntries(TOOL_DEFS.map(t => [t.key, t.label]));
+const SLOT_KEY = { 1: "emf", 2: "thermo", 3: "uv", 4: "book" };   // tool slot -> item key (0 = hands/none)
+const STARTING_CASH = 120;          // fresh save: enough for a torch + one evidence tool
+const STARTING_OWNED = [];          // items a brand-new save owns for free (empty = buy everything)
+
+// persistent player profile (cash / exp / level / owned items). Level is derived from exp.
+const profile = { cash: 0, exp: 0, level: 1, owned: STARTING_OWNED.slice() };
 let lastReward = null;       // summary of the most recent contract, shown on the debrief
+
+// Effective ownership during a run = permanently-banked items + items bought this run.
+// state.pendingOwned holds this-run purchases until you escape (then they bank).
+function ownsTool(key) { return profile.owned.includes(key) || !!state.pendingOwned[key]; }
+function bankPendingItems() {
+  let banked = false;
+  for (const k in state.pendingOwned) if (state.pendingOwned[k] && !profile.owned.includes(k)) { profile.owned.push(k); banked = true; }
+  state.pendingOwned = {};
+  if (banked) persistProfile();
+}
 
 const state = {
   running: false, paused: false, dead: false, won: false, hidden: false,
@@ -614,7 +670,8 @@ const state = {
   yaw: 0, pitch: 0,
   sanity: 100, stamina: CFG.staminaMax,
   flashlightOn: true,
-  tool: 0,                   // 0 flashlight, 1 EMF, 2 Thermo, 3 UV
+  tool: 0,                   // 0 hands/none, 1 EMF, 2 Thermo, 3 UV, 4 Book
+  pendingOwned: {},          // items purchased this run, banked only if you escape
   time: 0, startTime: 0,
   lastHuntCheck: 0, huntEndsAt: -1, nextHuntAllowed: 0,
   pendingHunt: false, huntWarnUntil: 0, flickerUntil: 0,
@@ -623,7 +680,7 @@ const state = {
   guess: null, ghostType: null, ghostName: "",
   difficulty: "amateur",
   ghostAge: 0, ghostDeath: "", ghostFriendly: false, ghostWrites: false, signChance: 0.6,
-  hasBook: false, bookPlaced: false, bookPending: false, bookText: null, pendingSignAt: 0, bookPos: { x: 0, z: 0 },
+  hasBook: false, bookPlaced: false, bookPages: [], bookViewPage: 0, bookNextWrite: 0, pendingSignAt: 0, bookPos: { x: 0, z: 0 },
   roamTarget: { x: GHOST_HOME.x, z: GHOST_HOME.z }, dwell: 0,
   nextEvent: 0, eventFlashUntil: 0,
   promptText: "", promptAction: null,
@@ -717,6 +774,7 @@ function makeTextTexture(lines, opts) {
 
 // ============================================================
 function init() {
+  bookMesh = null;                 // previous run's mesh belonged to the old scene
   scene = new THREE.Scene();
   scene.background = new THREE.Color(0x05060a);
   scene.fog = new THREE.Fog(0x05060a, 4, 34);
@@ -988,8 +1046,30 @@ function buildInteriorDoors() {
       cx = lo + len / 2; cz = d.at;
     }
     hinge.add(leaf); scene.add(hinge);
-    INT_DOORS.push({ hinge, cx, cz, cur: 0, target: 0, openAngle: (Math.PI * 0.58) * d.swing });
+    // Doorway seal: a collision box filling the gap. It blocks BOTH the player
+    // and the ghost, so a closed door is a real obstacle. The player opens it with
+    // Act; the ghost pushes it open over a short time (workGhostDoors) — briefly
+    // while roaming, near-instantly during a hunt. los:false keeps line-of-sight
+    // (and thus hunt/sanity behaviour) unchanged.
+    const HW = 0.16;   // half-thickness of the seal, roughly the leaf's depth
+    const gap = d.axis === "z"
+      ? { minX: d.at - HW, maxX: d.at + HW, minZ: lo, maxZ: lo + len }
+      : { minX: lo, maxX: lo + len, minZ: d.at - HW, maxZ: d.at + HW };
+    const colBox = box(gap.minX, gap.maxX, gap.minZ, gap.maxZ, false, "intdoor"); // starts closed
+    INT_DOORS.push({ hinge, cx, cz, cur: 0, target: 0, open: false, colBox,
+      openAngle: (Math.PI * 0.58) * d.swing });
   }
+}
+
+// Open or close an interior door and keep its collision seal in sync. Used by
+// both the player (Act) and the spirit's "open a door" sign.
+function setDoorOpen(d, open) {
+  if (d.open === open) return;
+  d.open = open;
+  const i = BOXES.indexOf(d.colBox);
+  if (open) { if (i >= 0) BOXES.splice(i, 1); }   // clear the doorway
+  else if (i < 0) BOXES.push(d.colBox);           // seal it again
+  tone("sine", open ? 90 : 120, open ? 60 : 74, 0.16, 0.35);   // a soft creak either way (peak, dur)
 }
 
 function buildCar() {
@@ -1202,7 +1282,7 @@ function setupInput() {
     else if (e.code === "Digit2") setTool(1);
     else if (e.code === "Digit3") setTool(2);
     else if (e.code === "Digit4") setTool(3);
-    else if (e.code === "Digit5" && state.hasBook) setTool(4);
+    else if (e.code === "Digit5") setTool(4);
     else if (e.code === "KeyK") openSeance();
     else if (e.code === "KeyJ") toggleJournal();
     else if (e.code === "KeyE") doInteract();
@@ -1271,13 +1351,19 @@ function setupInput() {
   // buttons (work on tap + click)
   const tap = (id, fn) => {
     const el = document.getElementById(id); if (!el) return;
-    const go = (e) => { e.preventDefault(); e.stopPropagation(); fn(); };
+    let last = 0;
+    const go = (e) => {
+      e.preventDefault(); e.stopPropagation();
+      const now = Date.now();
+      if (now - last < 500) return;   // ignore the synthetic mousedown iOS fires right after a touchstart
+      last = now; fn();
+    };
     el.addEventListener("touchstart", go, { passive: false });
     el.addEventListener("mousedown", go);
   };
   tap("interact", doInteract);
   tap("b-flash", toggleFlashlight);
-  tap("b-tool", () => setTool(state.tool + 1));
+  tap("b-tool", () => cycleTool(1));
   tap("b-ask", openSeance);
   tap("b-journal", toggleJournal);
   tap("b-pause", pauseGame);
@@ -1286,7 +1372,8 @@ function setupInput() {
   document.getElementById("seance-close").addEventListener("click", closeSeance);
   document.getElementById("book-pickup").addEventListener("click", pickUpBook);
   document.getElementById("book-closebtn").addEventListener("click", closeBookModal);
-  const bb = document.getElementById("buy-book"); if (bb) bb.addEventListener("click", buyBook);
+  tap("book-prev", () => turnBookPage(-1));
+  tap("book-next", () => turnBookPage(1));
 
   // tap-to-speak mic (where supported); tap once to listen, it stops itself when it hears you
   const mb = document.getElementById("mic-btn");
@@ -1388,18 +1475,38 @@ function setupMenu() {
 function lockPointer() { if (IS_TOUCH) return; const c = renderer && renderer.domElement; if (c && c.requestPointerLock) { try { c.requestPointerLock(); } catch (e) {} } }
 function unlockPointer() { if (document.exitPointerLock) { try { document.exitPointerLock(); } catch (e) {} } }
 
-function toggleFlashlight() { state.flashlightOn = !state.flashlightOn; updateFlashBtn(); }
-function updateFlashBtn() { const b = document.getElementById("b-flash"); if (b) b.classList.toggle("on", state.flashlightOn); }
+function toggleFlashlight() {
+  if (!ownsTool("flashlight")) { showToast("You don't own a torch. Buy one at the supplies stall."); return; }
+  state.flashlightOn = !state.flashlightOn; updateFlashBtn();
+}
+function updateFlashBtn() {
+  const b = document.getElementById("b-flash");
+  if (b) b.classList.toggle("on", state.flashlightOn && ownsTool("flashlight"));
+}
 
+// the slots the TOOLS button can rest on: 0 (hands) plus any owned gadget
+function ownedToolSlots() {
+  const slots = [0];
+  for (const n of [1, 2, 3, 4]) if (ownsTool(SLOT_KEY[n])) slots.push(n);
+  return slots;
+}
+// TOOLS button / mouse-wheel advance: step to the next owned slot
+function cycleTool(dir) {
+  const slots = ownedToolSlots();
+  let i = slots.indexOf(state.tool); if (i < 0) i = 0;
+  i = (i + (dir || 1) + slots.length) % slots.length;
+  setTool(slots[i]);
+}
+// direct select (keyboard digits): ignored if the item isn't owned
 function setTool(n) {
-  const count = state.hasBook ? 5 : 4;
-  n = ((n % count) + count) % count;
+  if (n !== 0 && !ownsTool(SLOT_KEY[n])) return;
   state.tool = n; uvActive = (n === 3);
   // swapping tools clears the last reading: EMF drops to baseline, thermometer returns to ambient
   state.emfReading = 1;
   state.temp = 12;
   const bt = document.getElementById("b-tool");
-  if (bt) { bt.textContent = ["LIGHT", "EMF", "TEMP", "UV", "BOOK"][n]; bt.classList.toggle("on", n !== 0); }
+  // slot 0 shows the button's identity ("TOOLS"); a held gadget shows its own name
+  if (bt) { bt.textContent = n === 0 ? "TOOLS" : TOOL_LABEL[SLOT_KEY[n]]; bt.classList.toggle("on", n !== 0); }
 }
 
 // ============================================================
@@ -1418,12 +1525,15 @@ function computeInteract() {
     for (const h of HIDES) { const d = dist2(p.x, p.z, h.x, h.z); if (d < bd) { bd = d; hideSpot = h; } }
     let sw = null, sb = 1.7;
     for (const s of SWITCHES) { const d = dist2(p.x, p.z, s.cx, s.cz); if (d < sb) { sb = d; sw = s; } }
+    let dr = null, drb = CFG.interact;
+    for (const d of INT_DOORS) { const dd = dist2(p.x, p.z, d.cx, d.cz); if (dd < drb) { drb = dd; dr = d; } }
     const nearBook = state.bookPlaced && near(p, state.bookPos, CFG.interact);
     if (near(p, CARC, CFG.interact + 0.6)) { text = "Leave in the car"; action = leaveInvestigation; }
     else if (hunting && hideSpot) { text = "Hide"; action = () => setHidden(true); }   // hiding wins mid-hunt
     else if (nearBook) { text = "Read book"; action = readBook; }
     else if (state.tool === 4 && !state.bookPlaced) { text = "Place book"; action = placeBook; }
     else if (sw) { text = sw.lights.some(h => h.on) ? "Turn lights off" : "Turn lights on"; action = () => toggleSwitch(sw); }
+    else if (dr) { text = dr.open ? "Close door" : "Open door"; action = () => setDoorOpen(dr, !dr.open); }
     else if (hideSpot) { text = "Hide"; action = () => setHidden(true); }
   }
   if (!text && near(p, NOTEC, CFG.interact) && canReadNote(p)) { text = "Read the note"; action = readNote; }
@@ -1455,6 +1565,7 @@ function openDoor() {
 
 function leaveInvestigation() {
   state.won = true; unlockPointer();
+  bankPendingItems();                 // escaped: any items bought this run are now yours for good
   const correct = state.guess && state.guess.name === state.ghostType.name;
   awardContract(correct, true);
   document.getElementById("verdict").textContent = correct ? "CORRECT IDENTIFICATION" : (state.guess ? "MISIDENTIFIED" : "NO IDENTIFICATION");
@@ -1473,7 +1584,7 @@ function setHidden(on) {
 }
 
 function readNote() { showToast("The note remembers " + state.ghostName + " — say the name and it may answer."); }
-function openShop() { shopOpen = true; unlockPointer(); document.getElementById("shop").style.display = "flex"; }
+function openShop() { shopOpen = true; unlockPointer(); renderShop(); updateProfileUI(); document.getElementById("shop").style.display = "flex"; }
 function closeShop() { shopOpen = false; document.getElementById("shop").style.display = "none"; if (state.running && !state.dead && !state.won) lockPointer(); }
 
 // ============================================================
@@ -1569,12 +1680,13 @@ function signFlickerLight() {
   showToast("A light shudders and gutters on its own.");
 }
 function signOpenDoor() {
-  if (!INT_DOORS.length) return signKnock();
+  const closed = INT_DOORS.filter(d => !d.open);   // can only open one that's shut
+  if (!closed.length) return signKnock();
   const px = camera.position.x, pz = camera.position.z;
-  const away = INT_DOORS.filter(d => dist2(px, pz, d.cx, d.cz) > 2.3);   // one you can watch swing
-  const pool = away.length ? away : INT_DOORS;
+  const away = closed.filter(d => dist2(px, pz, d.cx, d.cz) > 2.3);   // prefer one you can watch swing
+  const pool = away.length ? away : closed;
   const d = pool[(Math.random() * pool.length) | 0];
-  d.signOpenUntil = state.time + 3.0;
+  setDoorOpen(d, true);              // stays open — a lasting clue to where the spirit moved
   state.emfBoostUntil = state.time + 2.5;
   tone("sine", 95, 55, 0.5, 0.3);   // a low creak
   showToast("A door drifts open on its own.");
@@ -1638,34 +1750,18 @@ function askSpirit(kind) {
     showToast("A bell rings — follow it to the spirit's room.");
     return;
   }
-  // book questions — a reply is written by hand, so it always arrives on a delay
+  // book questions — asking simply nudges the open book; the spirit may scrawl a reply
   if (!state.bookPlaced) { showToast("Place the ghost writing book down first (select it, then Act)."); return; }
-  if (state.bookPending) { showToast("The book is already stirring — give it a moment."); return; }
-  state.bookPending = true;
-  micStatus("\"" + name + "…\" The book lies open. You wait.");
-  showToast("You ask, and wait. If it answers, the page will stir…");
+  micStatus("\"" + name + "\u2026\" The book lies open. You wait.");
+  showToast("You ask, and wait. If it answers, the page will stir\u2026");
   scheduleSeanceReturn();
-
-  const willAnswer = state.ghostWrites && Math.random() < 0.6;
-  const delay = 3200 + Math.random() * 3200;   // 3.2–6.4s before anything appears on the page
-
-  // a rustle partway through so the wait reads as deliberate, not broken
+  const delay = 2600 + Math.random() * 2600;   // a written reply takes a few seconds to appear
   setTimeout(() => {
     if (!state.investigating || state.dead || !state.bookPlaced) return;
-    scratch(); micStatus("The pages rustle…");
-  }, delay * 0.55);
-
-  setTimeout(() => {
-    state.bookPending = false;
-    if (!state.investigating || state.dead || !state.bookPlaced) return;
-    if (!willAnswer) { showToast("The pages stay blank. It won't answer that."); micStatus("Nothing. The book is still."); return; }
-    let text = "";
-    if (kind === "died") text = "It was " + state.ghostDeath + ".";
-    else if (kind === "happened") text = state.ghostFate;
-    else if (kind === "age") text = "I am " + state.ghostAge + " years old.";
-    else if (kind === "friendly") text = state.ghostFriendly ? "I mean you no harm." : "You should not have come.";
-    else text = "\u2026";
-    writeInBook(text);
+    const before = state.bookPages.length;
+    attemptBookWrite(kind);                       // contextual reply to *this* question, at the tier chance
+    scheduleNextBookWrite();                      // a nudge resets the idle clock
+    micStatus(state.bookPages.length > before ? "The pages stir\u2026" : "Nothing. The book is still.");
   }, delay);
 }
 
@@ -1697,6 +1793,84 @@ function chime(freq, vol, delay, pan) {
 }
 function scratch() { tone("sawtooth", 220, 130, 0.12, 0.3); }
 
+// a longer pen-scratching burst played when the spirit writes a page
+function scribble() {
+  if (!actx) return;
+  const dur = 0.9 + Math.random() * 0.5, t0 = actx.currentTime;
+  const strokes = 8 + ((Math.random() * 6) | 0);
+  for (let i = 0; i < strokes; i++) {
+    const start = t0 + (i / strokes) * dur * (0.7 + Math.random() * 0.6);
+    const len = 0.035 + Math.random() * 0.055;
+    const buf = actx.createBuffer(1, Math.max(1, Math.ceil(actx.sampleRate * len)), actx.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let j = 0; j < d.length; j++) d[j] = (Math.random() * 2 - 1) * (1 - j / d.length);  // decaying noise = one stroke
+    const src = actx.createBufferSource(); src.buffer = buf;
+    const bp = actx.createBiquadFilter(); bp.type = "bandpass";
+    bp.frequency.value = 1700 + Math.random() * 1700; bp.Q.value = 0.7;
+    const g = actx.createGain(); g.gain.value = 0.12 + Math.random() * 0.08;
+    src.connect(bp); bp.connect(g); g.connect(actx.destination);
+    src.start(start); src.stop(start + len);
+  }
+}
+
+// ---- Autonomous ghost writing ----
+// Once the book is placed, a ghost with the "ghostwriting" evidence tries to write
+// every 30-90s. Success chance is the book tier (tiers ignored for now → tier 1).
+const BOOK_WRITE_MIN = 30, BOOK_WRITE_MAX = 90;      // seconds between attempts
+const BOOK_WRITE_CHANCE = [0.51, 0.67, 0.76];        // tier 1 / 2 / 3
+const BOOK_TIER = 1;
+const BOOK_RESPONSES = [
+  { kind: "text",    value: "Help me please\u2026 it hurts!" },
+  { kind: "text",    value: "Please help me!" },
+  { kind: "text",    value: "Help Help Run Help Run See Run Hide Help" },
+  { kind: "text",    value: "6 6 6" },
+  { kind: "drawing", value: "pentagram" },
+  { kind: "drawing", value: "crucifix" },
+];
+function scheduleNextBookWrite() {
+  state.bookNextWrite = state.time + BOOK_WRITE_MIN + Math.random() * (BOOK_WRITE_MAX - BOOK_WRITE_MIN);
+}
+// A written reply to a specific séance question. Draws on the facts rolled for
+// this haunt in pickHaunt (age / cause of death / fate / temperament), so the
+// underlying answer stays consistent across the run — only the phrasing varies.
+// Anything else (idle writes, "give me a sign") falls back to the eerie pool.
+function bookAnswerFor(kind) {
+  const r = (a) => a[(Math.random() * a.length) | 0];
+  const n = state.ghostAge, d = state.ghostDeath, f = state.ghostFate;
+  if (kind === "age")
+    return { kind: "text", value: r(["I was " + n + ".", n + " years.", "I stopped at " + n + ".", n + "\u2026 I think.", "Only " + n + ".", "So old now\u2026 " + n + "."]) };
+  if (kind === "died")
+    return { kind: "text", value: r(["It was " + d + ".", d + ".", "I remember " + d + ".", d + ". That is how.", "They blamed " + d + "."]) };
+  if (kind === "happened")
+    return { kind: "text", value: r([f, f, "\u2026 " + f]) };
+  if (kind === "friendly")
+    return state.ghostFriendly
+      ? { kind: "text", value: r(["For now.", "I mean no harm\u2026 yet.", "Stay. We shall see.", "I am lonely, not cruel."]) }
+      : { kind: "text", value: r(["No.", "RUN.", "Leave. Now.", "You should not have come.", "I will not be gentle."]) };
+  return BOOK_RESPONSES[(Math.random() * BOOK_RESPONSES.length) | 0];
+}
+// one write attempt: only a ghostwriting spirit can succeed, at the tier's chance.
+// `kind` (optional) routes to a contextual answer; without it, the eerie pool.
+function attemptBookWrite(kind) {
+  if (!state.ghostWrites) return false;
+  const chance = BOOK_WRITE_CHANCE[BOOK_TIER - 1] || BOOK_WRITE_CHANCE[0];
+  if (Math.random() >= chance) return false;
+  const entry = kind ? bookAnswerFor(kind) : BOOK_RESPONSES[(Math.random() * BOOK_RESPONSES.length) | 0];
+  state.bookPages.push(entry);
+  state.evidence.ghostwriting = true;          // a written page is itself the evidence
+  bookGlow(true); scribble();
+  if (bookOpen) renderBookPage();              // update the open reader live
+  showToast("Scratching from the book — something is being written. Ghost Writing logged.");
+  return true;
+}
+// ticked from the main loop while a placed book waits for its next attempt
+function updateBook() {
+  if (!state.bookPlaced) return;
+  if (state.time < state.bookNextWrite) return;
+  attemptBookWrite();
+  scheduleNextBookWrite();
+}
+
 // ---- the ghost writing book (placeable item) ----
 function buildBookMesh() {
   bookMesh = new THREE.Group();
@@ -1710,41 +1884,109 @@ function buildBookMesh() {
 function bookGlow(on) { if (bookMesh) bookMesh.userData.pages.emissive.setHex(on ? 0x2f6a3a : 0x000000); }
 function placeBook() {
   const p = camera.position;
-  state.bookPlaced = true; state.bookText = null; state.bookPos = { x: p.x, z: p.z };
+  state.bookPlaced = true; state.bookPos = { x: p.x, z: p.z };
   if (!bookMesh) buildBookMesh();
-  bookMesh.position.set(p.x, 0.06, p.z); bookMesh.visible = true; bookGlow(false);
-  showToast("Writing book placed. Use ASK to question the spirit, then read it.");
+  bookMesh.position.set(p.x, 0.06, p.z); bookMesh.visible = true;
+  bookGlow(state.bookPages.length > 0);
+  scheduleNextBookWrite();               // the write clock starts the moment it's placed
+  showToast("Writing book placed and open. Leave it near the spirit — it may write on its own.");
 }
-function writeInBook(text) {
-  state.bookText = text; bookGlow(true); scratch();
-  state.evidence.ghostwriting = true;   // a written reply is itself the evidence — logs Ghost Writing
-  showToast("The pages stir — something was written. Ghost Writing logged.");
+
+// hand-drawn SVG glyphs the spirit scrawls (dark blood-ink on the page)
+function bookDrawingSVG(kind) {
+  const ink = "#3a120b";
+  if (kind === "pentagram") {
+    return '<svg viewBox="0 0 200 210" class="book-ink" style="transform:rotate(' + (Math.random() * 6 - 3).toFixed(1) + 'deg)">' +
+      '<circle cx="100" cy="105" r="80" fill="none" stroke="' + ink + '" stroke-width="4"/>' +
+      '<path d="M100 33 L141 162 L33 83 L167 83 L59 162 Z" fill="none" stroke="' + ink +
+      '" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/></svg>';
+  }
+  // inverted (upside-down) crucifix: crossbar low on the shaft
+  return '<svg viewBox="0 0 200 210" class="book-ink" style="transform:rotate(' + (Math.random() * 6 - 3).toFixed(1) + 'deg)">' +
+    '<line x1="100" y1="24" x2="100" y2="188" stroke="' + ink + '" stroke-width="8" stroke-linecap="round"/>' +
+    '<line x1="62" y1="150" x2="138" y2="150" stroke="' + ink + '" stroke-width="8" stroke-linecap="round"/></svg>';
+}
+function renderBookPage() {
+  const pageEl = document.getElementById("book-page"), navEl = document.getElementById("book-nav");
+  const n = state.bookPages.length;
+  if (!n) {
+    pageEl.className = "book-page empty"; pageEl.innerHTML = "The pages are blank.";
+    if (navEl) navEl.textContent = "";
+    return;
+  }
+  state.bookViewPage = Math.max(0, Math.min(state.bookViewPage, n - 1));
+  const entry = state.bookPages[state.bookViewPage];
+  if (entry.kind === "drawing") {
+    pageEl.className = "book-page drawing"; pageEl.innerHTML = bookDrawingSVG(entry.value);
+  } else {
+    pageEl.className = "book-page scrawl" + (entry.value.length <= 6 ? " big" : "");
+    pageEl.innerHTML = '<span class="scrawl-text" style="transform:rotate(' + (Math.random() * 3 - 1.5).toFixed(1) + 'deg)">' +
+      entry.value.replace(/</g, "&lt;") + '</span>';
+  }
+  if (navEl) navEl.textContent = (state.bookViewPage + 1) + " / " + n;
+}
+function turnBookPage(dir) {
+  if (!state.bookPages.length) return;
+  state.bookViewPage = (state.bookViewPage + dir + state.bookPages.length) % state.bookPages.length;
+  renderBookPage();
 }
 function readBook() {
-  document.getElementById("book-page").textContent = state.bookText || "The pages are blank.";
+  state.bookViewPage = state.bookPages.length ? state.bookPages.length - 1 : 0;   // open to the latest page
+  renderBookPage();
   document.getElementById("bookmodal").classList.add("show"); bookOpen = true; unlockPointer();
 }
 function closeBookModal() { document.getElementById("bookmodal").classList.remove("show"); bookOpen = false; if (state.running && !state.dead && !state.won && !seanceOpen) lockPointer(); }
 function pickUpBook() {
-  state.bookPlaced = false; state.bookPending = false; if (bookMesh) bookMesh.visible = false;
-  closeBookModal(); showToast("You pick up the writing book.");
+  state.bookPlaced = false; if (bookMesh) bookMesh.visible = false;
+  closeBookModal(); showToast("You pick up the writing book. Its pages keep what was written.");
 }
-function buyBook() {
-  if (state.hasBook) return;
-  const cost = 60;
-  if (profile.cash < cost) { showToast("Not enough cash for the writing book ($60)."); return; }
-  profile.cash -= cost; persistProfile();
-  state.hasBook = true;
-  const b = document.getElementById("buy-book"); if (b) { b.textContent = "OWNED"; b.classList.add("owned"); }
-  showToast("Ghost writing book acquired — cycle tools to BOOK, then Act to place it.");
+// Build the buyable-equipment rows from TOOL_DEFS, reflecting owned / bought-this-run / buyable.
+function renderShop() {
+  const host = document.getElementById("shop-items"); if (!host) return;
+  const names = { flashlight: "Flashlight (Torch)", emf: "EMF Reader", thermo: "Thermometer", uv: "UV Light", book: "Ghost Writing Book" };
+  host.innerHTML = "";
+  for (const t of TOOL_DEFS) {
+    const row = document.createElement("div"); row.className = "shop-item";
+    const name = document.createElement("span"); name.className = "si-name"; name.textContent = names[t.key] || t.key;
+    row.appendChild(name);
+    const banked = profile.owned.includes(t.key);
+    const pending = !banked && !!state.pendingOwned[t.key];
+    if (banked) {
+      const tag = document.createElement("span"); tag.className = "si-tag"; tag.style.borderColor = "var(--green)"; tag.style.color = "var(--green)"; tag.textContent = "OWNED"; row.appendChild(tag);
+    } else if (pending) {
+      const b = document.createElement("button"); b.className = "si-buy pending"; b.textContent = "CARRIED"; row.appendChild(b);
+    } else {
+      const b = document.createElement("button"); b.className = "si-buy"; b.textContent = "$" + t.cost;
+      b.addEventListener("click", () => buyTool(t.key));
+      row.appendChild(b);
+    }
+    host.appendChild(row);
+  }
+}
+
+function buyTool(key) {
+  if (ownsTool(key)) return;
+  const cost = TOOL_COST[key];
+  if (profile.cash < cost) { showToast("Not enough cash — " + (TOOL_LABEL[key] || key) + " costs $" + cost + "."); return; }
+  profile.cash -= cost;
+  state.pendingOwned[key] = true;          // carried now; banked only if you escape
+  if (key === "book") state.hasBook = true;
+  if (key === "flashlight") { state.flashlightOn = true; updateFlashBtn(); }
+  persistProfile();                         // saves the cash spend immediately
+  renderShop();
+  const msg = key === "book" ? "Writing book acquired — cycle TOOLS to BOOK, then Act to place it."
+            : key === "flashlight" ? "Torch acquired — tap TORCH to switch it on."
+            : (TOOL_LABEL[key] || key) + " acquired — cycle TOOLS to use it.";
+  showToast(msg);
 }
 
 // ============================================================
 //  Physics
 // ============================================================
-function resolve(pos, r) {
+function resolve(pos, r, skipTag) {
   for (let it = 0; it < 2; it++) {
     for (const b of BOXES) {
+      if (skipTag && b.tag === skipTag) continue;   // e.g. the ghost phases through closed interior doors
       const cx = Math.max(b.minX, Math.min(pos.x, b.maxX));
       const cz = Math.max(b.minZ, Math.min(pos.z, b.maxZ));
       const dx = pos.x - cx, dz = pos.z - cz, d = Math.hypot(dx, dz);
@@ -1794,7 +2036,7 @@ function frame() {
   const active = state.running && !state.paused && !state.dead && !state.won && !journalOpen && !shopOpen && !seanceOpen && !bookOpen;
   if (active) {
     updatePlayer(dt);
-    if (state.investigating) { updateGhost(dt); updateSanity(dt); updateHunt(dt); updateEvents(dt); updateHouseLights(); }
+    if (state.investigating) { updateGhost(dt); updateSanity(dt); updateHunt(dt); updateEvents(dt); updateHouseLights(); updateBook(); }
     updateTools(dt);
     updateInteriorDoors(dt);
     updateCrucifixes(dt);
@@ -1837,6 +2079,7 @@ function updatePlayer(dt) {
 
 function updateGhost(dt) {
   const p = camera.position, hunting = state.huntEndsAt > state.time;
+  workGhostDoors(dt, hunting);   // push open any closed door in the ghost's way
   const inside = p.z < 11.9;   // the fenced yard (and the car) is a safe haven — the haunt won't harm you there
   if (hunting) {
     const seen = !state.hidden && inside && hasLOS(ghost.position.x, ghost.position.z, p.x, p.z);
@@ -1866,17 +2109,33 @@ function stepGhost(tgt, speed, dt) {
   const dx = tgt.x - ghost.position.x, dz = tgt.z - ghost.position.z, d = Math.hypot(dx, dz);
   if (d > 0.05) {
     const np = { x: ghost.position.x + (dx / d) * speed * dt, z: ghost.position.z + (dz / d) * speed * dt };
-    resolve(np, 0.3); ghost.position.x = np.x; ghost.position.z = np.z;
+    resolve(np, 0.3); ghost.position.x = np.x; ghost.position.z = np.z;   // collides with closed doors now
     ghost.rotation.y = Math.atan2(dx, dz);
   }
 }
 
-function updateInteriorDoors(dt) {
-  const px = camera.position.x, pz = camera.position.z;
+// The ghost pushes a closed door open when it comes up against one. It only ever
+// opens (never closes), so opened doors stay ajar as a trail. During a hunt the
+// push is near-instant and the door slams — closing a door only buys you a beat.
+function workGhostDoors(dt, hunting) {
+  const gx = ghost.position.x, gz = ghost.position.z;
+  const openTime = hunting ? CFG.ghostHuntDoorOpen : CFG.ghostDoorOpen;
   for (const d of INT_DOORS) {
-    const auto = dist2(px, pz, d.cx, d.cz) < 2.3;               // opens as the player approaches
-    const forced = d.signOpenUntil && state.time < d.signOpenUntil;   // the spirit pushed it open
-    d.target = (auto || forced) ? d.openAngle : 0;
+    if (d.open) { d.ghostWork = 0; continue; }
+    if (dist2(gx, gz, d.cx, d.cz) < CFG.ghostDoorReach) {
+      d.ghostWork = (d.ghostWork || 0) + dt;
+      if (d.ghostWork >= openTime) { setDoorOpen(d, true); if (hunting) knock(); }
+    } else {
+      d.ghostWork = 0;
+    }
+  }
+}
+
+function updateInteriorDoors(dt) {
+  // Doors hold their state: open until closed, closed until opened. Nothing
+  // auto-closes, so a door the spirit opened stays open as a visible clue.
+  for (const d of INT_DOORS) {
+    d.target = d.open ? d.openAngle : 0;
     d.cur += (d.target - d.cur) * Math.min(1, dt * 5);
     d.hinge.rotation.y = d.cur;
   }
@@ -2033,7 +2292,14 @@ function updateHUD() {
 
   document.getElementById("hunt-banner").style.opacity = state.huntEndsAt > state.time ? 1 : 0;
   if (toastUntil && state.time > toastUntil) { document.getElementById("toast").style.opacity = 0; toastUntil = 0; }
-  document.getElementById("clock").textContent = state.investigating ? "INVESTIGATION ACTIVE" : "AT THE GATE";
+  if (state.investigating) {
+    const t = Math.max(0, state.time - state.startTime);        // seconds in the house
+    const mm = String(Math.floor(t / 60)).padStart(2, "0");
+    const ss = String(Math.floor(t % 60)).padStart(2, "0");
+    document.getElementById("clock").textContent = "INVESTIGATION · " + mm + ":" + ss;
+  } else {
+    document.getElementById("clock").textContent = "AT THE GATE";
+  }
 }
 
 // ============================================================
@@ -2042,8 +2308,16 @@ function updateHUD() {
 function toggleJournal() {
   journalOpen = !journalOpen;
   const el = document.getElementById("journal");
-  if (journalOpen) { unlockPointer(); renderJournal(); el.style.display = "flex"; }
-  else { el.style.display = "none"; if (!state.dead && !state.won && !shopOpen) lockPointer(); }
+  if (!el) { journalOpen = false; return; }
+  if (journalOpen) {
+    unlockPointer();
+    el.style.display = "flex";                 // show first: a render hiccup can't leave a blank, frozen screen
+    try { renderJournal(); }
+    catch (err) { console.error("renderJournal failed:", err); }
+  } else {
+    el.style.display = "none";
+    if (!state.dead && !state.won && !shopOpen) lockPointer();
+  }
 }
 function renderJournal() {
   const ev = document.getElementById("evidence-list"); ev.innerHTML = "";
@@ -2086,7 +2360,10 @@ function cyrb53(str, seed) {
   h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
   return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(16).padStart(14, "0");
 }
-function signProfile(p) { return cyrb53(p.cash + "|" + p.exp + "|" + p.level + "|" + SAVE_SALT, 0x9e3779b9); }
+function ownedStr(p) { return (p.owned || []).slice().sort().join(","); }
+function signProfile(p) { return cyrb53(p.cash + "|" + p.exp + "|" + p.level + "|" + ownedStr(p) + "|" + SAVE_SALT, 0x9e3779b9); }
+// signature format before items were tracked — used to migrate old saves without wiping them
+function signLegacy(p) { return cyrb53(p.cash + "|" + p.exp + "|" + p.level + "|" + SAVE_SALT, 0x9e3779b9); }
 
 // XP curve: each level costs ~35% more than the last, starting at 150
 function levelInfo(exp) {
@@ -2097,16 +2374,25 @@ function levelInfo(exp) {
 
 function loadProfile() {
   try {
-    const raw = localStorage.getItem(SAVE_KEY); if (!raw) return;
-    const p = JSON.parse(raw);
-    if (p && signProfile(p) === p.sig) {
-      profile.cash = p.cash | 0; profile.exp = p.exp | 0; profile.level = levelInfo(profile.exp).level;
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (!raw) {   // brand-new save: seed starting cash + default kit, then write it
+      profile.cash = STARTING_CASH; profile.exp = 0; profile.owned = STARTING_OWNED.slice();
+      persistProfile(); return;
     }
+    const p = JSON.parse(raw);
+    const owned = Array.isArray(p.owned) ? p.owned.filter(k => k in TOOL_COST) : null;
+    if (p && signProfile(p) === p.sig) {
+      profile.cash = p.cash | 0; profile.exp = p.exp | 0; profile.owned = owned || STARTING_OWNED.slice();
+    } else if (p && signLegacy(p) === p.sig) {   // older save with no item list — keep progress, re-save in new format
+      profile.cash = p.cash | 0; profile.exp = p.exp | 0; profile.owned = STARTING_OWNED.slice();
+      profile.level = levelInfo(profile.exp).level; persistProfile();
+    }
+    profile.level = levelInfo(profile.exp).level;
   } catch (e) {}
 }
 function persistProfile() {
   profile.level = levelInfo(profile.exp).level;
-  const p = { cash: profile.cash, exp: profile.exp, level: profile.level };
+  const p = { cash: profile.cash, exp: profile.exp, level: profile.level, owned: profile.owned.slice().sort() };
   p.sig = signProfile(p);
   try { localStorage.setItem(SAVE_KEY, JSON.stringify(p)); } catch (e) {}
   updateProfileUI();
@@ -2148,7 +2434,7 @@ function updateProfileUI() {
 function exportSave() {
   persistProfile();
   const info = levelInfo(profile.exp);
-  const data = { game: "Phantom Manor", version: 1, cash: profile.cash, exp: profile.exp, level: info.level };
+  const data = { game: "Phantom Manor", version: 2, cash: profile.cash, exp: profile.exp, level: info.level, owned: profile.owned.slice().sort() };
   data.sig = signProfile(data);
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
@@ -2163,10 +2449,11 @@ function importSave(file) {
   r.onload = () => {
     try {
       const p = JSON.parse(r.result);
-      const ok = p && typeof p.sig === "string" &&
-        signProfile({ cash: p.cash, exp: p.exp, level: p.level }) === p.sig;
-      if (!ok) { showToast("Save rejected — the file has been altered."); return; }
-      profile.cash = p.cash | 0; profile.exp = p.exp | 0;
+      const owned = Array.isArray(p.owned) ? p.owned.filter(k => k in TOOL_COST) : [];
+      const newOk = p && typeof p.sig === "string" && signProfile({ cash: p.cash, exp: p.exp, level: p.level, owned }) === p.sig;
+      const legacyOk = p && typeof p.sig === "string" && signLegacy({ cash: p.cash, exp: p.exp, level: p.level }) === p.sig;
+      if (!newOk && !legacyOk) { showToast("Save rejected — the file has been altered."); return; }
+      profile.cash = p.cash | 0; profile.exp = p.exp | 0; profile.owned = newOk ? owned : STARTING_OWNED.slice();
       persistProfile();
       showToast("Progress loaded — level " + levelInfo(profile.exp).level + ".");
     } catch (e) { showToast("That doesn't look like a Phantom Manor save."); }
@@ -2207,6 +2494,15 @@ function hideOverlays() { document.querySelectorAll(".overlay").forEach(o => o.c
 
 function startGame() {
   if (!actx) initAudio(); else if (actx.state === "suspended") actx.resume();
+  // fresh run: nothing carried yet; equipment reflects what you own (banked items only)
+  state.pendingOwned = {};
+  state.hasBook = ownsTool("book");
+  state.bookPlaced = false; state.bookPages = []; state.bookViewPage = 0; state.bookNextWrite = 0;
+  if (bookMesh) bookMesh.visible = false;
+  state.tool = 0; uvActive = false;
+  state.flashlightOn = ownsTool("flashlight");   // torch defaults on only if you own one
+  updateFlashBtn();
+  const bt = document.getElementById("b-tool"); if (bt) { bt.textContent = "TOOLS"; bt.classList.remove("on"); }
   state.running = true; state.paused = false; hideOverlays(); lockPointer();
   showToast("Head to the front door and let yourself in.");
 }
