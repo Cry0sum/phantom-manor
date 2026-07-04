@@ -303,8 +303,8 @@
   <div id="seance">
     <div class="seance-box">
       <h2>Séance</h2>
-      <div class="seance-sub" id="seance-sub">Speak to the spirit, or tap a question. Book questions need the writing book placed nearby — replies are written by hand, so they take a few seconds, and a written reply logs Ghost Writing evidence.</div>
-      <button class="mic-btn" id="mic-btn">Hold to speak</button>
+      <div class="seance-sub" id="seance-sub">Tap the mic and speak, or tap a question. Book questions need the writing book placed nearby — replies are written by hand, so they take a few seconds, and a written reply logs Ghost Writing evidence. After you ask, the panel steps back so you can watch and listen in the room.</div>
+      <button class="mic-btn" id="mic-btn">Tap to speak</button>
       <div class="mic-status" id="mic-status"></div>
       <div class="seance-scroll" id="seance-list"></div>
       <div class="jclose" id="seance-close" style="margin-top:14px">Close</div>
@@ -857,12 +857,23 @@ function buildDoor() {
 
 // small hanging fixtures with a warm point light in each room; each starts randomly on or off
 function buildCeilingLights() {
+  // sw = which wall switch drives this fixture; fixtures sharing a switch turn on/off together
   const spots = [
-    { x: -7, z: -7 }, { x: 5, z: -7 }, { x: -6, z: 6 }, { x: 8, z: 2 }, { x: 8, z: 9 }, { x: -1, z: 4 },
+    { x: -7,   z: -7,  sw: 0 },  // bedroom
+    { x: 1.5,  z: -7,  sw: 1 },  // living room — west   ┐ both on the living-room switch
+    { x: 8.5,  z: -7,  sw: 1 },  // living room — east   ┘
+    { x: -7.5, z: 1.5, sw: 2 },  // entry hall — NW  ┐ west pair, on the west-wall switch
+    { x: -7.5, z: 8.5, sw: 2 },  // entry hall — SW  ┘
+    { x: -0.5, z: 1.5, sw: 5 },  // entry hall — NE  ┐ east pair, on the x=4-wall switch
+    { x: -0.5, z: 8.5, sw: 5 },  // entry hall — SE  ┘
+    { x: 8,    z: 2,   sw: 3 },  // upper-east
+    { x: 8,    z: 9,   sw: 4 },  // lower-east
   ];
-  const ON_BASE = 2.6;   // "on" is now far brighter than before — clearly lights a room, brighter than the torch
+  const ON_BASE = 2.6;   // "on" is far brighter than the torch — clearly lights a room
+  const groupOn = {};    // fixtures on the same switch share a starting state
   for (const s of spots) {
-    const on = Math.random() < 0.5;
+    if (!(s.sw in groupOn)) groupOn[s.sw] = Math.random() < 0.5;
+    const on = groupOn[s.sw];
     const cord = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.5, 5),
       new THREE.MeshStandardMaterial({ color: 0x111417 }));
     cord.position.set(s.x, WALL_H - 0.25, s.z); scene.add(cord);
@@ -873,24 +884,25 @@ function buildCeilingLights() {
     const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 6),
       new THREE.MeshBasicMaterial({ color: on ? 0xffe6b0 : 0x140d05 }));
     bulb.position.set(s.x, WALL_H - 0.62, s.z); scene.add(bulb);
-    const lp = new THREE.PointLight(0xffe1b0, on ? ON_BASE : 0, 11, 1.3);
+    const lp = new THREE.PointLight(0xffe1b0, on ? ON_BASE : 0, 12, 1.3);
     lp.position.set(s.x, WALL_H - 0.6, s.z); scene.add(lp);
-    houseLights.push({ light: lp, bulb, shade, base: ON_BASE, on, x: s.x, z: s.z });
+    houseLights.push({ light: lp, bulb, shade, base: ON_BASE, on, x: s.x, z: s.z, sw: s.sw });
   }
 }
 
 // a wall-mounted switch in each room, flush to the wall; flip it to toggle that room's light
 function buildLightSwitches() {
   const SW = [
-    { i: 0, x: -11.84, z: -7, face:  1 }, // bedroom — west wall
-    { i: 1, x:  11.84, z: -7, face: -1 }, // living — east wall
-    { i: 2, x: -11.84, z:  6, face:  1 }, // hall/kitchen — west wall
-    { i: 3, x:  11.84, z: -0.5, face: -1 }, // upper-east — east wall (moved clear of the locker at z=2)
-    { i: 4, x:  11.84, z:  9, face: -1 }, // lower-east — east wall
-    { i: 5, x:   3.84, z:  4, face: -1 }, // central — x=4 wall
+    { sw: 0, x: -11.84, z: -7,   face:  1 }, // bedroom — west wall
+    { sw: 1, x:  11.84, z: -7,   face: -1 }, // living room — east wall (drives both living fixtures)
+    { sw: 2, x: -11.84, z:  6,   face:  1 }, // entry hall — west wall (drives the west pair)
+    { sw: 5, x:   3.84, z:  4,   face: -1 }, // entry hall — x=4 wall (drives the east pair)
+    { sw: 3, x:  11.84, z: -0.5, face: -1 }, // upper-east — east wall (clear of the locker at z=2)
+    { sw: 4, x:  11.84, z:  9,   face: -1 }, // lower-east — east wall
   ];
   for (const d of SW) {
-    const h = houseLights[d.i]; if (!h) continue;
+    const lg = houseLights.filter(h => h.sw === d.sw); if (!lg.length) continue;
+    const h = lg[0];   // group shares a state, so the first fixture represents the switch
     const grp = new THREE.Group();
     const plate = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.26, 0.17),
       new THREE.MeshStandardMaterial({ color: 0x0e1216, roughness: 0.6 }));
@@ -902,14 +914,15 @@ function buildLightSwitches() {
       new THREE.MeshStandardMaterial({ color: 0x1c232a, roughness: 0.5 }));
     nub.position.set(d.face * 0.05, h.on ? -0.03 : 0.03, 0); grp.add(nub);
     grp.position.set(d.x, 1.3, d.z); scene.add(grp);
-    SWITCHES.push({ cx: d.x, cz: d.z, light: h, ind: ind.material, nub });
+    SWITCHES.push({ cx: d.x, cz: d.z, lights: lg, ind: ind.material, nub });
   }
 }
 
 function toggleSwitch(sw) {
-  sw.light.on = !sw.light.on;
-  sw.ind.color.setHex(sw.light.on ? 0x9be0a0 : 0x4a1414);
-  sw.nub.position.y = sw.light.on ? -0.03 : 0.03;
+  const newOn = !sw.lights.some(h => h.on);   // any on → all off; otherwise all on
+  for (const h of sw.lights) h.on = newOn;
+  sw.ind.color.setHex(newOn ? 0x9be0a0 : 0x4a1414);
+  sw.nub.position.y = newOn ? -0.03 : 0.03;
   tone("square", 300, 190, 0.12, 0.05);   // a soft click
 }
 
@@ -1142,16 +1155,18 @@ function setupInput() {
   document.getElementById("book-closebtn").addEventListener("click", closeBookModal);
   const bb = document.getElementById("buy-book"); if (bb) bb.addEventListener("click", buyBook);
 
-  // hold-to-speak mic (where supported); harmless no-op otherwise
+  // tap-to-speak mic (where supported); tap once to listen, it stops itself when it hears you
   const mb = document.getElementById("mic-btn");
   if (mb) {
-    const down = (e) => { e.preventDefault(); startListening(); };
-    const up = (e) => { e.preventDefault(); stopListening(); };
-    mb.addEventListener("touchstart", down, { passive: false });
-    mb.addEventListener("touchend", up, { passive: false });
-    mb.addEventListener("mousedown", down);
-    mb.addEventListener("mouseup", up);
-    mb.addEventListener("mouseleave", up);
+    let lastTog = 0;
+    const toggleMic = (e) => {
+      if (e) e.preventDefault();
+      const now = Date.now(); if (now - lastTog < 350) return; lastTog = now;  // swallow the synthetic click that follows a touch
+      if (!micSupported()) return;
+      if (mb.classList.contains("live")) stopListening(); else startListening();
+    };
+    mb.addEventListener("touchstart", toggleMic, { passive: false });
+    mb.addEventListener("click", toggleMic);
   }
 
   setTool(0);
@@ -1230,10 +1245,10 @@ function computeInteract() {
     else if (hunting && hideSpot) { text = "Hide"; action = () => setHidden(true); }   // hiding wins mid-hunt
     else if (nearBook) { text = "Read book"; action = readBook; }
     else if (state.tool === 4 && !state.bookPlaced) { text = "Place book"; action = placeBook; }
-    else if (sw) { text = sw.light.on ? "Turn lights off" : "Turn lights on"; action = () => toggleSwitch(sw); }
+    else if (sw) { text = sw.lights.some(h => h.on) ? "Turn lights off" : "Turn lights on"; action = () => toggleSwitch(sw); }
     else if (hideSpot) { text = "Hide"; action = () => setHidden(true); }
   }
-  if (!text && near(p, NOTEC, CFG.interact)) { text = "Read the note"; action = readNote; }
+  if (!text && near(p, NOTEC, CFG.interact) && canReadNote(p)) { text = "Read the note"; action = readNote; }
   state.promptText = text; state.promptAction = action;
   const el = document.getElementById("interact");
   if (text) { el.textContent = text; el.classList.add("show"); } else el.classList.remove("show");
@@ -1312,7 +1327,7 @@ function openSeance() {
   }
   const sup = micSupported(), mb = document.getElementById("mic-btn");
   mb.classList.toggle("disabled", !sup);
-  mb.textContent = sup ? "Hold to speak" : "Voice unavailable";
+  mb.textContent = sup ? "Tap to speak" : "Voice unavailable";
   micStatus(sup ? "" : "Voice needs HTTPS/localhost & a supporting browser — tap a question below.");
   document.getElementById("seance").classList.add("show");
   seanceOpen = true; unlockPointer();
@@ -1332,15 +1347,31 @@ function startListening() {
   if (!micSupported()) return;
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   try {
-    recog = new SR(); recog.lang = "en-US"; recog.interimResults = false; recog.maxAlternatives = 1;
-    recog.onresult = (e) => onSpeech(e.results[0][0].transcript);
+    recog = new SR(); recog.lang = "en-US"; recog.interimResults = true; recog.continuous = false; recog.maxAlternatives = 1;
+    recog.onresult = (e) => {
+      let interim = "", final = "";
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const r = e.results[i]; if (r.isFinal) final += r[0].transcript; else interim += r[0].transcript;
+      }
+      if (interim) micStatus("… " + interim);
+      if (final) { onSpeech(final); stopListening(); }   // heard you — stop at once, no need to keep holding
+    };
     recog.onerror = (e) => { micStatus("Mic: " + (e.error || "error")); setMicLive(false); };
     recog.onend = () => setMicLive(false);
-    recog.start(); setMicLive(true); micStatus("Listening…");
+    recog.start(); setMicLive(true); micStatus("Listening… speak your question.");
   } catch (e) { micStatus("Couldn't start the mic."); setMicLive(false); }
 }
 function stopListening() { try { if (recog) recog.stop(); } catch (e) {} setMicLive(false); }
-function setMicLive(on) { const mb = document.getElementById("mic-btn"); if (mb) mb.classList.toggle("live", on); if (on) mb.textContent = "Listening…"; else if (mb && !mb.classList.contains("disabled")) mb.textContent = "Hold to speak"; }
+function setMicLive(on) {
+  const mb = document.getElementById("mic-btn"); if (!mb) return;
+  mb.classList.toggle("live", on);
+  if (mb.classList.contains("disabled")) return;
+  mb.textContent = on ? "Listening… tap to stop" : "Tap to speak";
+}
+
+// after a question goes out, step back into the room so the reply (and anything else
+// stirring in the dark) plays out in front of you instead of behind the séance panel
+function scheduleSeanceReturn() { setTimeout(() => { if (seanceOpen) closeSeance(); }, 900); }
 
 // the spirit's response to a question (answers arrive on a delay, and may not come at all)
 function askSpirit(kind) {
@@ -1348,6 +1379,7 @@ function askSpirit(kind) {
   const name = state.ghostName;
   if (kind === "sign") {
     micStatus("You call out: \"" + name + ", give me a sign.\"");
+    scheduleSeanceReturn();
     setTimeout(() => {
       if (!state.investigating || state.dead) return;
       if (Math.random() < state.signChance) { knock(); state.emfBoostUntil = state.time + 2.5; showToast("A knock answers from the dark."); }
@@ -1357,6 +1389,7 @@ function askSpirit(kind) {
   }
   if (kind === "where") {
     micStatus("\"" + name + ", where are you?\"");
+    scheduleSeanceReturn();
     ringBell();
     showToast("A bell rings — follow it to the spirit's room.");
     return;
@@ -1367,6 +1400,7 @@ function askSpirit(kind) {
   state.bookPending = true;
   micStatus("\"" + name + "…\" The book lies open. You wait.");
   showToast("You ask, and wait. If it answers, the page will stir…");
+  scheduleSeanceReturn();
 
   const willAnswer = state.ghostWrites && Math.random() < 0.6;
   const delay = 3200 + Math.random() * 3200;   // 3.2–6.4s before anything appears on the page
@@ -1487,6 +1521,13 @@ function hasLOS(ax, az, bx, bz) {
     for (const b of BOXES) { if (!b.los) continue; if (x > b.minX && x < b.maxX && z > b.minZ && z < b.maxZ) return false; }
   }
   return true;
+}
+
+// the memorial note is nailed to the OUTSIDE of the front wall — only legible from the yard,
+// with the front wall (and its LoS box) between you and the page if you try to read it from indoors
+function canReadNote(p) {
+  if (p.z <= NOTEC.z) return false;                  // must be on the note's side of the front wall (the yard)
+  return hasLOS(p.x, p.z, NOTEC.x, NOTEC.z + 0.17);  // and nothing blocking the sightline to the page itself
 }
 
 // ============================================================
