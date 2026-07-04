@@ -118,6 +118,10 @@
     border-bottom:1px solid rgba(255,255,255,.04)}
   .ctrl-row b{color:var(--ice);font-weight:600;letter-spacing:.05em;white-space:nowrap}
   .ctrl-row span{color:var(--dim);text-align:right}
+  .mic-note{font-size:11px;line-height:1.55;color:var(--dim);padding:8px 12px;margin:0}
+  #mic-allow{margin:8px 12px 4px;width:calc(100% - 24px)}
+  #mic-allow[disabled]{opacity:.6;cursor:default}
+  #mic-allow-status{color:var(--amber);min-height:14px}
   .btn{pointer-events:auto;cursor:pointer;background:transparent;color:#e9eef3;border:1px solid var(--cyan);
     padding:14px 34px;font-family:var(--mono);font-size:13px;letter-spacing:.28em;text-transform:uppercase;transition:.15s}
   .btn:hover{background:var(--cyan);color:#04070c;box-shadow:0 0 26px rgba(78,160,224,.5)}
@@ -362,6 +366,22 @@
       </div>
     </div>
 
+    <div class="controls-drop">
+      <button class="ctrl-btn" id="mic-toggle" aria-expanded="false">Microphone · optional <span class="ctrl-caret">▾</span></button>
+      <div class="ctrl-panel" id="mic-panel">
+        <div class="ctrl-scroll">
+          <div class="ctrl-head">Talk to the spirit</div>
+          <p class="mic-note">You can speak your séance questions aloud instead of tapping them. This is entirely optional — every question can also be tapped, and the game plays fully without a microphone.</p>
+          <div class="ctrl-head">Where your voice goes</div>
+          <p class="mic-note">Your speech is turned into text by your device's own speech recognition. On some browsers (such as Chrome) that audio is sent to the browser maker's servers to transcribe it; on others it's handled on-device. This game never records, stores, or transmits your voice itself — it only receives the transcribed words, and only while the mic is active.</p>
+          <div class="ctrl-head">Grant access up front</div>
+          <p class="mic-note">If you want to use voice, allow it here on the menu so no permission prompt interrupts you mid-investigation. Voice runs only over a secure (HTTPS / localhost) connection.</p>
+          <button class="btn small" id="mic-allow">Allow microphone access</button>
+          <div class="mic-note" id="mic-allow-status"></div>
+        </div>
+      </div>
+    </div>
+
     <div class="difficulty">
       <div class="difflabel">Contract difficulty · higher pays more</div>
       <div class="chips" id="diff-chips">
@@ -483,7 +503,7 @@ const CFG = {
   staminaMax: 100, staminaDrain: 26, staminaRegen: 11,
   sensitivity: 0.0022, touchSens: 0.005,
   sanityDarkDrain: 0.55, sanityNearGhostMul: 2.6, sanityFlashlightMul: 0.55,
-  huntEarliest: 30, huntCheckEvery: 5, huntSanityThresh: 55,
+  huntEarliest: 30, huntCheckEvery: 5,
   huntCooldown: 24, huntDuration: 18, huntWarn: 2.6,
   ghostRoam: 0.75, ghostHuntSpeed: 2.75, catchRadius: 1.35, sightRange: 34,
   emfRadius: 6, coldRadius: 7, interact: 2.4, hideRange: 1.9,
@@ -576,7 +596,9 @@ let renderer, scene, camera, clock;
 let flashlight, eventLight, moon;
 const BOXES = [];            // {minX,maxX,minZ,maxZ,los,tag}
 const HIDES = [];            // {x,z}
-let ghost, ghostMat, handprints, doorMesh, doorBox = null;
+let ghost, ghostMat, doorMesh, doorBox = null;
+const FINGERPRINTS = [];     // {mat, x, z} handprint clusters scattered on valid interior walls
+const CRUCIFIXES = [];       // {flip, x, z, cur, target, inverted} wall crosses the spirit can turn upside down
 const INT_DOORS = [];        // {hinge, cx, cz, closed, open} interior doors that swing open near the player
 const houseLights = [];      // ceiling fixtures we flicker before a manifestation
 const SWITCHES = [];         // wall-mounted light switches, one per room
@@ -742,6 +764,7 @@ function init() {
   buildDoor();
   buildInteriorDoors();
   buildFingerprints();
+  buildCrucifixes();
   buildGhost();
   if (!state.ghostType) pickHaunt();
   buildSpiritNote();
@@ -779,7 +802,7 @@ function buildInterior() {
       new THREE.MeshStandardMaterial({ map: t, roughness: 0.9 }));
     m.position.set((minX + maxX) / 2, WALL_H / 2, (minZ + maxZ) / 2);
     m.castShadow = true; m.receiveShadow = true; scene.add(m);
-    box(minX, maxX, minZ, maxZ, true);
+    box(minX, maxX, minZ, maxZ, true, "wall");
   }
 
   for (const f of FURNITURE) {
@@ -858,9 +881,6 @@ function buildDoor() {
   doorMesh.position.set(1.0, 1.3, 0); // centre of the 2m leaf, offset from hinge
   hinge.add(doorMesh); scene.add(hinge);
   doorMesh.userData.hinge = hinge;
-  const knob = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 6),
-    new THREE.MeshStandardMaterial({ color: 0xcaa14e, metalness: 0.6, roughness: 0.4 }));
-  knob.position.set(1.8, 0, 0.1); doorMesh.add(knob);
   doorBox = box(-7, -5, 11.85, 12.15, true, "door");
 }
 
@@ -927,12 +947,14 @@ function buildLightSwitches() {
   }
 }
 
-function toggleSwitch(sw) {
-  const newOn = !sw.lights.some(h => h.on);   // any on → all off; otherwise all on
-  for (const h of sw.lights) h.on = newOn;
-  sw.ind.color.setHex(newOn ? 0x9be0a0 : 0x4a1414);
-  sw.nub.position.y = newOn ? -0.03 : 0.03;
+function setSwitch(sw, on) {
+  for (const h of sw.lights) h.on = on;
+  sw.ind.color.setHex(on ? 0x9be0a0 : 0x4a1414);
+  sw.nub.position.y = on ? -0.03 : 0.03;
   tone("square", 300, 190, 0.12, 0.05);   // a soft click
+}
+function toggleSwitch(sw) {
+  setSwitch(sw, !sw.lights.some(h => h.on));   // any on → all off; otherwise all on
 }
 
 // closed wood doors set into the interior doorways; they swing open as you approach
@@ -965,11 +987,6 @@ function buildInteriorDoors() {
       leaf.position.set(len / 2, 1.3, 0);
       cx = lo + len / 2; cz = d.at;
     }
-    const knob = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 6),
-      new THREE.MeshStandardMaterial({ color: 0xb9954a, metalness: 0.5, roughness: 0.45 }));
-    knob.position.copy(leaf.position);
-    if (d.axis === "z") knob.position.z += len / 2 - 0.16; else knob.position.x += len / 2 - 0.16;
-    knob.position.y = 1.15; hinge.add(knob);
     hinge.add(leaf); scene.add(hinge);
     INT_DOORS.push({ hinge, cx, cz, cur: 0, target: 0, openAngle: (Math.PI * 0.58) * d.swing });
   }
@@ -1023,18 +1040,125 @@ function buildSpiritNote() {
   const gl = new THREE.PointLight(0xffe6c0, 0.35, 3.2); gl.position.set(NOTEC.x, 1.7, NOTEC.z + 0.9); scene.add(gl);
 }
 
+// a fingerprint decal is this wide/tall and sits this high on the wall
+const FP_W = 0.6, FP_H = 0.8, FP_Y = 1.2;
+
+// every wall face inside the house where a small fixture could physically sit:
+// interior-facing, clear of other walls, and not covered by a tall piece of furniture.
+// used for both fingerprints and wall crucifixes.
+function interiorWallSlots() {
+  const slots = [];
+  const margin = FP_W / 2 + 0.25;   // keep prints off the corners
+  const off = T / 2 + 0.02;         // sit just proud of the wall face
+  for (const [x1, z1, x2, z2] of SEGMENTS) {
+    const horizontal = z1 === z2;
+    const len = horizontal ? Math.abs(x2 - x1) : Math.abs(z2 - z1);
+    if (len < FP_W + 0.4) continue;                       // wall too short to fit a print
+    const lo = horizontal ? Math.min(x1, x2) : Math.min(z1, z2);
+    const fixed = horizontal ? z1 : x1;
+    const usable = len - margin * 2;
+    const n = Math.max(1, Math.floor(usable / 1.1) + 1);  // a few candidate spots along the run
+    for (let i = 0; i < n; i++) {
+      const along = lo + margin + (n === 1 ? usable / 2 : (usable * i) / (n - 1));
+      for (const s of [1, -1]) {                          // both faces of the wall
+        let cx, cz, rotY, nx, nz;
+        if (horizontal) { cx = along; cz = fixed + s * off; nx = 0; nz = s; rotY = s > 0 ? 0 : Math.PI; }
+        else { cz = along; cx = fixed + s * off; nx = s; nz = 0; rotY = s > 0 ? Math.PI / 2 : -Math.PI / 2; }
+        const tx = cx + nx * 0.3, tz = cz + nz * 0.3;      // the point just in front of the print
+        if (Math.abs(tx) > 11.7 || Math.abs(tz) > 11.7) continue;   // faces outside the house
+        if (pointInWalls(tx, tz)) continue;                          // faces into another wall, not a room
+        if (fingerprintBlocked(cx, cz, nx, nz)) continue;            // a tall object covers it
+        slots.push({ cx, cz, rotY });
+      }
+    }
+  }
+  return slots;
+}
+function pointInWalls(x, z) {
+  for (const b of BOXES) {
+    if (b.tag !== "wall") continue;
+    if (x > b.minX && x < b.maxX && z > b.minZ && z < b.maxZ) return true;
+  }
+  return false;
+}
+// blocked only by furniture tall enough to reach chest height and sitting against this face
+function fingerprintBlocked(cx, cz, nx, nz) {
+  const tx = -nz, tz = nx;   // along the wall
+  for (const f of FURNITURE) {
+    if (f.h < FP_Y - FP_H / 2) continue;   // shorter than the print — a table won't hide it
+    const fx0 = f.cx - f.w / 2 - 0.15, fx1 = f.cx + f.w / 2 + 0.15;
+    const fz0 = f.cz - f.d / 2 - 0.15, fz1 = f.cz + f.d / 2 + 0.15;
+    for (let s = -1; s <= 1; s++) {
+      const sx = cx + tx * (FP_W / 2) * s + nx * 0.25;
+      const sz = cz + tz * (FP_W / 2) * s + nz * 0.25;
+      if (sx > fx0 && sx < fx1 && sz > fz0 && sz < fz1) return true;
+    }
+  }
+  return false;
+}
+
 function buildFingerprints() {
-  // green handprints mounted FLAT on the bedroom wall (x=-2 divider, facing into the room)
+  FINGERPRINTS.length = 0;
   const tex = makeHandprintTexture();
-  const grp = new THREE.Group();
-  const p1 = new THREE.Mesh(new THREE.PlaneGeometry(0.62, 0.82),
-    new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0, depthWrite: false }));
-  p1.position.set(-2.28, 1.25, -3.6); p1.rotation.y = -Math.PI / 2;
-  const p2 = p1.clone(); p2.material = p1.material; p2.position.set(-2.28, 1.05, -4.2);
-  p2.rotation.z = 0.3; p2.scale.set(0.8, 0.8, 0.8);
-  grp.add(p1); grp.add(p2); scene.add(grp);
-  handprints = p1.material; // shared material controls opacity
-  p2.material = handprints;
+  let slots = interiorWallSlots();
+  if (!slots.length) slots = [{ cx: -2.28, cz: -3.6, rotY: -Math.PI / 2 }]; // safety net
+
+  // pick a handful of well-spread anchors, always including one near the ghost's room
+  const chosen = [];
+  const farEnough = (c) => chosen.every(o => dist2(c.cx, c.cz, o.cx, o.cz) > 2.2);
+  slots.sort((a, b) => dist2(a.cx, a.cz, GHOST_HOME.x, GHOST_HOME.z) - dist2(b.cx, b.cz, GHOST_HOME.x, GHOST_HOME.z));
+  chosen.push(slots[0]);                                   // guaranteed cluster by the haunt's room
+  const rest = slots.slice(1).sort(() => Math.random() - 0.5);
+  const want = 3 + ((Math.random() * 2) | 0);              // 3–4 more scattered around the house
+  for (const c of rest) { if (chosen.length >= want + 1) break; if (farEnough(c)) chosen.push(c); }
+
+  for (const slot of chosen) {
+    const grp = new THREE.Group();
+    const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0, depthWrite: false });
+    const p1 = new THREE.Mesh(new THREE.PlaneGeometry(FP_W, FP_H), mat);
+    p1.position.set(slot.cx, FP_Y, slot.cz); p1.rotation.y = slot.rotY;
+    const p2 = new THREE.Mesh(new THREE.PlaneGeometry(FP_W, FP_H), mat);
+    // offset the second print sideways along the wall so the pair reads as a smear
+    const tx = Math.cos(slot.rotY) * 0.42, tz = -Math.sin(slot.rotY) * 0.42;
+    p2.position.set(slot.cx + tx, FP_Y - 0.22, slot.cz + tz); p2.rotation.y = slot.rotY;
+    p2.rotation.z = 0.3; p2.scale.set(0.8, 0.8, 0.8);
+    grp.add(p1); grp.add(p2); scene.add(grp);
+    FINGERPRINTS.push({ mat, x: slot.cx, z: slot.cz });
+  }
+}
+
+// small crucifixes mounted flush on interior walls. Each is a two-bar cross inside
+// a "flip" group; the spirit can spin that group 180° so the cross hangs inverted.
+function buildCrucifixes() {
+  CRUCIFIXES.length = 0;
+  const slots = interiorWallSlots();
+  if (!slots.length) return;
+  const chosen = [];
+  const spaced = (c) => chosen.every(o => dist2(c.cx, c.cz, o.cx, o.cz) > 3.0);
+  const shuffled = slots.slice().sort(() => Math.random() - 0.5);
+  const want = 3 + ((Math.random() * 2) | 0);   // 3–4 crosses around the house
+  for (const c of shuffled) { if (chosen.length >= want) break; if (spaced(c)) chosen.push(c); }
+
+  const mat = new THREE.MeshStandardMaterial({ color: 0x6b573a, metalness: 0.35, roughness: 0.6 });
+  for (const slot of chosen) {
+    const mount = new THREE.Group();
+    mount.position.set(slot.cx, 1.55, slot.cz);
+    mount.rotation.y = slot.rotY;                // face into the room
+    const flip = new THREE.Group();              // rotating this about Z inverts the cross, staying flush
+    const vert = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.34, 0.035), mat);
+    const horiz = new THREE.Mesh(new THREE.BoxGeometry(0.20, 0.05, 0.035), mat);
+    horiz.position.y = 0.06;                      // crossbar sits high, so a flip clearly reads as upside-down
+    vert.castShadow = horiz.castShadow = true;
+    flip.add(vert); flip.add(horiz);
+    mount.add(flip); scene.add(mount);
+    CRUCIFIXES.push({ flip, x: slot.cx, z: slot.cz, cur: 0, target: 0, inverted: false });
+  }
+}
+function updateCrucifixes(dt) {
+  for (const c of CRUCIFIXES) {
+    c.cur += (c.target - c.cur) * Math.min(1, dt * 6);   // ease toward upright (0) or inverted (π)
+    c.flip.rotation.z = c.cur;
+  }
 }
 
 function makeHandprintTexture() {
@@ -1172,6 +1296,7 @@ function setupInput() {
       if (e) e.preventDefault();
       const now = Date.now(); if (now - lastTog < 350) return; lastTog = now;  // swallow the synthetic click that follows a touch
       if (!micSupported()) return;
+      if (!micGranted) { showToast("Enable the microphone from the main menu first."); return; }
       if (mb.classList.contains("live")) stopListening(); else startListening();
     };
     mb.addEventListener("touchstart", toggleMic, { passive: false });
@@ -1212,6 +1337,50 @@ function setupMenu() {
       ctog.setAttribute("aria-expanded", open ? "true" : "false");
     };
     ctog.addEventListener("click", toggle);
+  }
+
+  // microphone box — same collapsible pattern; lets the player grant access up front (no in-game prompt)
+  const mtog = document.getElementById("mic-toggle");
+  const mpan = document.getElementById("mic-panel");
+  if (mtog && mpan) {
+    mtog.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation();
+      const open = mtog.classList.toggle("open"); mpan.classList.toggle("open", open);
+      mtog.setAttribute("aria-expanded", open ? "true" : "false");
+    });
+  }
+  const mallow = document.getElementById("mic-allow");
+  const mstat = document.getElementById("mic-allow-status");
+  const markGranted = () => {
+    micGranted = true;
+    if (mallow) { mallow.textContent = "Microphone enabled ✓"; mallow.disabled = true; }
+  };
+  if (mallow) {
+    mallow.addEventListener("click", async (e) => {
+      e.preventDefault(); e.stopPropagation();
+      if (!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)) {
+        if (mstat) mstat.textContent = "Voice needs a secure (HTTPS or localhost) connection — on this setup you'll tap questions instead.";
+        return;
+      }
+      mallow.disabled = true; if (mstat) mstat.textContent = "Requesting…";
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        stream.getTracks().forEach(t => t.stop());   // we only needed the permission grant, not the audio
+        markGranted();
+        if (mstat) mstat.textContent = "Granted. You can speak to spirits in the séance — no prompt will interrupt the game.";
+      } catch (err) {
+        mallow.disabled = false;
+        if (mstat) mstat.textContent = "Microphone blocked or unavailable — you can still tap every question.";
+      }
+    });
+  }
+  // if permission was already granted in a previous session, reflect that and skip prompting
+  if (navigator.permissions && navigator.permissions.query) {
+    try {
+      navigator.permissions.query({ name: "microphone" }).then(st => {
+        if (st.state === "granted") markGranted();
+        st.onchange = () => { micGranted = (st.state === "granted"); };
+      }).catch(() => {});
+    } catch (e) {}
   }
   if (IS_TOUCH) { const h = document.getElementById("start-hint"); if (h) h.textContent = "Left stick to move · drag right to look"; }
 }
@@ -1319,6 +1488,7 @@ const PHRASES = [
   { kind: "friendly", label: "Are you friendly?",     note: "Written reply · slow · logs Ghost Writing", keys: ["are you friendly", "friendly"] },
 ];
 
+let micGranted = false;   // set once permission is granted (on the menu or a prior session) — no in-game prompts
 function micSupported() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   return !!SR && (window.isSecureContext === true);
@@ -1382,6 +1552,71 @@ function setMicLive(on) {
 // stirring in the dark) plays out in front of you instead of behind the séance panel
 function scheduleSeanceReturn() { setTimeout(() => { if (seanceOpen) closeSeance(); }, 900); }
 
+// ways the spirit can answer "give me a sign" — one is chosen at random
+function signKnock() {
+  knock(); state.emfBoostUntil = state.time + 2.5;
+  showToast("A knock answers from the dark.");
+}
+function signFlickerLight() {
+  if (!houseLights.length) return signKnock();
+  // flicker a single fixture, favouring one in the haunt's room to draw you toward it
+  const h = houseLights.reduce((best, c) =>
+    dist2(c.x, c.z, GHOST_HOME.x, GHOST_HOME.z) < dist2(best.x, best.z, GHOST_HOME.x, GHOST_HOME.z) ? c : best,
+    houseLights[0]);
+  h.signFlickerUntil = state.time + 2.2;
+  state.emfBoostUntil = state.time + 2.5;
+  tone("square", 210, 90, 0.06, 0.05);
+  showToast("A light shudders and gutters on its own.");
+}
+function signOpenDoor() {
+  if (!INT_DOORS.length) return signKnock();
+  const px = camera.position.x, pz = camera.position.z;
+  const away = INT_DOORS.filter(d => dist2(px, pz, d.cx, d.cz) > 2.3);   // one you can watch swing
+  const pool = away.length ? away : INT_DOORS;
+  const d = pool[(Math.random() * pool.length) | 0];
+  d.signOpenUntil = state.time + 3.0;
+  state.emfBoostUntil = state.time + 2.5;
+  tone("sine", 95, 55, 0.5, 0.3);   // a low creak
+  showToast("A door drifts open on its own.");
+}
+function signToggleSwitch() {
+  if (!SWITCHES.length) return signKnock();
+  const sw = SWITCHES[(Math.random() * SWITCHES.length) | 0];
+  const wasOn = sw.lights.some(h => h.on);   // restore the room afterwards so it isn't left changed
+  // on → wait 1s → off → wait 1s, three times over
+  let step = 0;
+  const run = () => {
+    if (!state.investigating || state.dead) { setSwitch(sw, wasOn); return; }
+    if (step >= 6) { setSwitch(sw, wasOn); return; }
+    setSwitch(sw, step % 2 === 0);   // even steps ON, odd steps OFF
+    step++;
+    setTimeout(run, 1000);
+  };
+  run();
+  state.emfBoostUntil = state.time + 7;
+  showToast("A switch clicks — the lights answer, on and off.");
+}
+function signFlipCrucifix() {
+  if (!CRUCIFIXES.length) return signKnock();
+  // prefer turning an upright cross (so the effect is visible); if all are already
+  // inverted, right one back instead. Bias to the one nearest the haunt's room.
+  const upright = CRUCIFIXES.filter(c => !c.inverted);
+  const pool = upright.length ? upright : CRUCIFIXES;
+  const c = pool.reduce((best, x) =>
+    dist2(x.x, x.z, GHOST_HOME.x, GHOST_HOME.z) < dist2(best.x, best.z, GHOST_HOME.x, GHOST_HOME.z) ? x : best, pool[0]);
+  c.inverted = !c.inverted;
+  c.target = c.inverted ? Math.PI : 0;
+  state.emfBoostUntil = state.time + 2.5;
+  tone("sawtooth", 190, 80, 0.4, 0.1);   // a low grinding turn
+  showToast(c.inverted ? "A crucifix turns upside down on the wall." : "A crucifix rights itself.");
+}
+function giveSign() {
+  const signs = [signKnock, signFlickerLight, signToggleSwitch];
+  if (INT_DOORS.length) signs.push(signOpenDoor);
+  if (CRUCIFIXES.length) signs.push(signFlipCrucifix);
+  signs[(Math.random() * signs.length) | 0]();
+}
+
 // the spirit's response to a question (answers arrive on a delay, and may not come at all)
 function askSpirit(kind) {
   if (!state.investigating) { showToast("Step inside first."); return; }
@@ -1391,7 +1626,7 @@ function askSpirit(kind) {
     scheduleSeanceReturn();
     setTimeout(() => {
       if (!state.investigating || state.dead) return;
-      if (Math.random() < state.signChance) { knock(); state.emfBoostUntil = state.time + 2.5; showToast("A knock answers from the dark."); }
+      if (Math.random() < state.signChance) giveSign();
       else showToast("Silence. The spirit does not stir.");
     }, 2000 + Math.random() * 3000);
     return;
@@ -1438,8 +1673,12 @@ function askSpirit(kind) {
 function ringBell() {
   if (!actx) return;
   const cam = camera.position, dx = GHOST_HOME.x - cam.x, dz = GHOST_HOME.z - cam.z;
-  const dist = Math.hypot(dx, dz);
-  const vol = Math.max(0.06, Math.min(0.85, 4 / (2 + dist)));
+  // cheap "spatial" cue: which room is the player actually standing in (nearest room centre)?
+  let here = ROOMS[0], nb = Infinity;
+  for (const r of ROOMS) { const d = (cam.x - r.x) ** 2 + (cam.z - r.z) ** 2; if (d < nb) { nb = d; here = r; } }
+  // full volume only when you're in the spirit's own room; muffled elsewhere, so a quiet
+  // ring reads as "hang on — wrong room, try another".
+  const vol = (here === homeRoom) ? 0.85 : 0.16;
   let rel = Math.atan2(dx, dz) - state.yaw;
   while (rel > Math.PI) rel -= 2 * Math.PI; while (rel < -Math.PI) rel += 2 * Math.PI;
   const pan = Math.max(-1, Math.min(1, Math.sin(rel)));
@@ -1558,6 +1797,7 @@ function frame() {
     if (state.investigating) { updateGhost(dt); updateSanity(dt); updateHunt(dt); updateEvents(dt); updateHouseLights(); }
     updateTools(dt);
     updateInteriorDoors(dt);
+    updateCrucifixes(dt);
     computeInteract();
     state.time += dt;
   }
@@ -1634,7 +1874,9 @@ function stepGhost(tgt, speed, dt) {
 function updateInteriorDoors(dt) {
   const px = camera.position.x, pz = camera.position.z;
   for (const d of INT_DOORS) {
-    d.target = dist2(px, pz, d.cx, d.cz) < 2.3 ? d.openAngle : 0;
+    const auto = dist2(px, pz, d.cx, d.cz) < 2.3;               // opens as the player approaches
+    const forced = d.signOpenUntil && state.time < d.signOpenUntil;   // the spirit pushed it open
+    d.target = (auto || forced) ? d.openAngle : 0;
     d.cur += (d.target - d.cur) * Math.min(1, dt * 5);
     d.hinge.rotation.y = d.cur;
   }
@@ -1676,7 +1918,7 @@ function updateHunt(dt) {
   if (now < state.nextHuntAllowed) return;
   if (now - state.lastHuntCheck < CFG.huntCheckEvery) return;
   state.lastHuntCheck = now;
-  const thresh = DIFFICULTIES[state.difficulty].huntThresh;
+  const thresh = DIFFICULTIES[state.difficulty].huntThresh;   // single source of truth for the hunt threshold
   if (state.sanity < thresh && Math.random() < 0.12 + (thresh - state.sanity) / 130) scheduleHunt();
 }
 
@@ -1703,6 +1945,14 @@ function updateHouseLights() {
   const now = state.time;
   const unstable = now < state.flickerUntil || state.huntEndsAt > now;
   for (const h of houseLights) {
+    if (!unstable && h.signFlickerUntil && now < h.signFlickerUntil) {
+      // a lone fixture the spirit is stuttering as a sign — flicker it regardless of its switch
+      const lit = Math.random() > 0.45;
+      h.light.intensity = lit ? h.base * (0.3 + Math.random() * 0.7) : 0;
+      if (h.bulb) h.bulb.material.color.setHex(lit ? 0xffe6b0 : 0x140d05);
+      if (h.shade) h.shade.material.emissiveIntensity = lit ? 0.5 : 0.02;
+      continue;
+    }
     if (unstable) {
       const lit = Math.random() > 0.5;
       const cap = h.on ? h.base : h.base * 0.35;   // an off room only sparks faintly
@@ -1741,11 +1991,13 @@ function updateTools(dt) {
     if (state.temp < 0) state.evidence.freezing = true;
   } else state.temp += (12 - state.temp) * Math.min(1, dt * 0.5);
 
-  if (uvActive && state.investigating) {
-    const near = dist2(px, pz, -2.3, -3.9) < 6.0;   // UV reveal range — prints show from up to 6m while scanning with UV
-    if (near && has("fingerprints")) { handprints.opacity = Math.min(1, handprints.opacity + dt * 3.5); state.evidence.fingerprints = true; }
-    else if (!near) handprints.opacity = Math.max(0, handprints.opacity - dt * 1.2);
-  } else handprints.opacity = Math.max(0, handprints.opacity - dt * 1.2);
+  const scanning = uvActive && state.investigating && has("fingerprints");
+  for (const fp of FINGERPRINTS) {
+    // prints show from up to 6m while scanning with UV, and fade back out otherwise
+    const lit = scanning && dist2(px, pz, fp.x, fp.z) < 6.0;
+    if (lit) { fp.mat.opacity = Math.min(1, fp.mat.opacity + dt * 3.5); state.evidence.fingerprints = true; }
+    else fp.mat.opacity = Math.max(0, fp.mat.opacity - dt * 1.2);
+  }
 }
 
 function die() {
